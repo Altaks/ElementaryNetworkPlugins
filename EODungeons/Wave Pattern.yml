@@ -1,0 +1,58 @@
+# THIS IS ONLY A PATTERN, PLEASE MODIFY VALUES TO USE IT
+# IGNORE "<" & ">" when writing file
+entities: # You can add any amount of entities
+  entity-1: 
+    spawn-coordinates: # pitch & yaw are optional
+    - "[<world>/<x>/<y>/<z>]" # Please use non-decimal numbers.
+    - "[<world>/<x>/<y>/<z>/<pitch>/<yaw>]"
+    - "[<world>/<x>/<y>/<z>/<pitch/<yaw>]"
+    entity-type: minecraft:<minecraft-named-entity-type>
+    # For dongeon-mob-type value, please choose between :
+    # ENTITY.MOB for basic mobs
+    # ENTITY.BOSS for mid-bosses & bosses
+    # ENTITY.WORLDBOSS for worldbosses
+    dongeon-mob-type: ENTITY.MOB
+    health: <decimal-number> # Use . instead of , to use decimal-values
+    nbt-tag: <nbt-tag># NBT-TAG Like /summon command tag
+    inventory:
+      armor: 
+        helmet: 
+          item-name: minecraft:<minecraft-named-item-type>
+          amount: <non-decimal value between 0 and 64>
+          nbt-tag: <nbt-tag value is the same as tags you use into "{}" while using "/give" command>
+        chestplate:
+          item-name: minecraft:<minecraft-named-item-type>
+          amount: <non-decimal value between 0 and 64>
+          nbt-tag: <nbt-tag value is the same as tags you use into "{}" while using "/give" command>
+        leggings:
+          item-name: minecraft:<minecraft-named-item-type>
+          amount: <non-decimal value between 0 and 64>
+          nbt-tag: <nbt-tag value is the same as tags you use into "{}" while using "/give" command>
+        boots: 
+          item-name: minecraft:<minecraft-named-item-type>
+          amount: <non-decimal value between 0 and 64>
+          nbt-tag: <nbt-tag value is the same as tags you use into "{}" while using "/give" command>
+      hands:
+        main-hand: 
+          item-name: minecraft:<minecraft-named-item-type>
+          amount: <non-decimal value between 0 and 64>
+          nbt-tag: <nbt-tag value is the same as tags you use into "{}" while using "/give" command>
+        off-hand:
+          item-name: minecraft:<minecraft-named-item-type>
+          amount: <non-decimal value between 0 and 64>
+          nbt-tag: <nbt-tag value is the same as tags you use into "{}" while using "/give" command>
+      storage-slots: # Can be empty
+        item-1:
+          item-name: minecraft:<minecraft-named-item-type>
+          amount: <non-decimal value between 0 and 64>
+          nbt-tag: <nbt-tag value is the same as tags you use into "{}" while using "/give" command>
+        item-2: 
+          item-name: minecraft:<minecraft-named-item-type>
+          amount: <non-decimal value between 0 and 64>
+          nbt-tag: <nbt-tag value is the same as tags you use into "{}" while using "/give" command>
+        item-3:
+          item-name: minecraft:<minecraft-named-item-type>
+          amount: <non-decimal value between 0 and 64>
+          nbt-tag: <nbt-tag value is the same as tags you use into "{}" while using "/give" command>
+  entity-2:
+  entity-3:

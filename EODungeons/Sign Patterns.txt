@@ -1,0 +1,18 @@
+Ignore "<" or ">" when placing signs.
+Maximum 6 numbers per coordinates values
+
+STARTING SIGN PATTERN:
+--------------------------------
+LINE 0 : STATE.START
+LINE 1 : d:<dungeon-name>
+LINE 2 : <min-x>/<min-y>/<min-z>
+LINE 3 : <max-x>/<max-y>/<max-z>
+--------------------------------
+
+SYSTEM WAVES SIGN PATTERN:
+--------------------------------
+LINE 0 : wvn:<wave-number>
+LINE 1 : wv:<wave-name>
+LINE 2 : <reach-radius-x>/<reach-radius-y>/<reach-radius-z>
+LINE 3 : d:<dungeon-name>
+--------------------------------
