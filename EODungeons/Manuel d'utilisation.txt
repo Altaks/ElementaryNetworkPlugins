@@ -1,0 +1,70 @@
+Mise en place d'un donjon :
+
+Pour mettre en place un donjon, vous devez déjà lancer une fois le plugin sans donjon de créé.
+Le plugin va ainsi créer deux dossiers dans son répertoire ainsi qu'un fichier.
+
+--------------------------- PARTIE FICHIERS DU PLUGIN ---------------------------
+Pour chaque donjon que vous allez vouloir créer :
+  -  Il vous faudra créer une liste de mob par vague que vous voulez faire apparaître (à placer dans le dossiers "lists").
+  -  Il vous faudra créer deux listes de loots (à placer dans le dossier "loots") : 
+       -  Une liste d'items en cas de victoire (qui sera nommée ainsi : nom-du-donjon_win.yml)
+       -  Une liste d'items en cas de défaite (qui sera nommée ainsi : nom-du-donjon_loose.yml)
+       Attention à la casse dans les noms des donjons. 
+       Par exemple avec un donjon nommé Kiro, il faudra faire les listes "Kiro_win.yml" et "Kiro_loose.yml"
+
+       
+--------------------------- PARTIE MISE EN PLACE EN JEU ---------------------------
+  -  Il vous faudra mettre en place 2 panneaux en bois de chêne noir : 
+      -  Un qui sera visible aux joueurs (sur lequel il pourront cliquer facilement)
+      
+      -  L'autre panneau à l'opposé du panneau en question. soit de l'autre côté du bloc de support. 
+         Ce panneau devra suivre le pattern suivant : 
+         
+				LIGNE 1 : STATE.START
+				LIGNE 2 : d:<nom-du-donjon>
+				LIGNE 3 : <min-x>/<min-y>/<min-z>
+				LIGNE 4 : <max-x>/<max-y>/<max-z>
+
+		Vous ne devez pas mettre les "<" et les ">" dans le panneau.
+		Les lignes 3 & 4 permettent de délimiter la zone du donjon via des coordonnées minimales et maximales
+		
+  -  Il vous faudra aussi mettre dans la zone du donjon des panneaux en bois d'acacia qui permettront d'ajouter des vagues de monstres au donjon
+  		Les panneaux des vagues devront le pattern suivant : 
+  		
+  				LIGNE 1 : wvn:<numéro-de-vague>
+				LIGNE 2 : wv:<nom-de-la-liste-qui-contient-les-monstres-de-la-vague>
+				LIGNE 3 : <rayon-en-x>/<rayon-en-y>/<rayon-en-z>
+				LIGNE 4 : d:<nom-du-donjon>
+		
+		Vous ne devez pas mettre les "<" et les ">" dans les panneaux.
+		La ligne 3 désigne le rayon de scan de présence des joueurs aux alentours du panneau pour cette vague-ci.
+
+--------------------------- DEROULEMENT D'UNE INSTANCE DE DONJON ---------------------------
+
+1ère étape : Les joueurs qui souhaitent entrer dans le donjon se positionnent dans un rayon de 5.5 blocs par rapport au joueur qui va lancer l'instance du donjon.
+2ème étape : Le joueur veut lancer l'instance du donjon, doit cliquer sur le panneau visible en bois de chêne noir.
+3ème étape : Les joueurs vont être téléportés 10 blocs plus loin, dans le donjon par rapport à la position de la porte.
+4ème étape : Les joueurs doivent s'approcher des zones analysées par le plugin afin que les vagues se déclenche dans l'ordre.
+	
+	- Chaque vague doit être totalement complétée avant de permettre à la suivante d'être déclenchée.
+	- Chaque vague fait apparaître tous ses monstres simultanément dans le donjon aux coordonnées indiquées dans la configuration
+	
+	- Chaque monstre dit comme "boss" permettra à tous les joueurs dans le donjon de connaître sa jauge de vie (via l' actionbar)
+	Si un joueur meurt dans le donjon, il sera réssucité puis téléporté au début du donjon, sans pouvoir y retourner.
+	
+	Si tous les joueurs qui sont entrés dans le donjon sont morts, les joueurs (tous ceux connectés même ceux qui sont morts en pleine instance), 
+	seront déclarés comme perdants face au donjon, et recevront les butins de défaite. 
+	Chaque joueur recevra les mêmes butins
+	
+	Si un/plusieurs des joueurs sont en vie et terminent d'éliminer la dernière vague du donjon, 
+	alors les joueurs (tous ceux connectés même ceux qui sont morts en pleine instance) seront déclarés comme gagnants face au donjon, 
+	et ils recevront un butin de victoire commun.
+	
+	Si un joueur se déconnecte en plein donjon, il sera considéré comme mort, 
+	mais cela ne fera pas échouer d'office l'équipe sur le donjon
+
+5ème étape : Tous les joueurs qui étaient présent au début du donjon et qui sont encore connectés, sont téléportés devant le donjon, et reçoivent leurs butin. 
+	
+	- L'inventaire des butins doit obligatoirement être vidé de tout son contenu avant que les joueurs puissent repartir.
+
+6ème étape : Les joueurs peuvent commencer un autre donjon/ recommencer celui-ci/ faire autre chose. 

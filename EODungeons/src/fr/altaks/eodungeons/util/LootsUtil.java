@@ -8,12 +8,12 @@ import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.craftbukkit.v1_14_R1.inventory.CraftItemStack;
+import org.bukkit.craftbukkit.v1_15_R1.inventory.CraftItemStack;
 import org.bukkit.inventory.ItemStack;
 
 import fr.altaks.eodungeons.Main;
 import fr.altaks.eodungeons.core.DungeonLoots;
-import net.minecraft.server.v1_14_R1.NBTTagCompound;
+import net.minecraft.server.v1_15_R1.NBTTagCompound;
 
 /**
  * @author Altaks
@@ -60,7 +60,7 @@ public class LootsUtil {
 		
 		ItemStack itemBase = new ItemStack(material, stackAmount);
 		
-		net.minecraft.server.v1_14_R1.ItemStack nmsItem = CraftItemStack.asNMSCopy(itemBase);
+		net.minecraft.server.v1_15_R1.ItemStack nmsItem = CraftItemStack.asNMSCopy(itemBase);
 		nmsItem.setTag(compound);
 		
 		ItemStack finalItem = CraftItemStack.asBukkitCopy(nmsItem);

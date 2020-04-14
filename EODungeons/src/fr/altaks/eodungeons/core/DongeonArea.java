@@ -24,8 +24,7 @@ public class DongeonArea {
 	private Location minLoc, maxLoc; // Location minimal et maximale du donjon. Correspond aux sommets opposés en diagonale de la zone
 	{
 		// On rajoute les matériaux ACACIA_SIGN et ACACIA_WALL_SIGN aux panneaux systèmes
-		Material[] systemSignTypes = { Material.ACACIA_SIGN, Material.ACACIA_WALL_SIGN }; 
-		this.systemSignTypes.addAll(Arrays.asList(systemSignTypes));
+		this.systemSignTypes.addAll(Arrays.asList(Material.ACACIA_SIGN, Material.ACACIA_WALL_SIGN));
 	}
 	
 	/**

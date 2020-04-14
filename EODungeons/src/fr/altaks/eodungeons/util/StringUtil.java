@@ -21,7 +21,7 @@ public class StringUtil {
 		StringBuilder builder = new StringBuilder(healthcolor);
 		
 		// CurrentLife     |    Visible Life
-		// currentHealth |         x
+		// currentHealth   |        x
 		//  maxHealth      |  componentSize
 		
 		int visiblelife = (int)((componentSize * currentHealth) / maxHealth); // calcul de la taille de la vie sur l'affichage 

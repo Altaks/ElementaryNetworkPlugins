@@ -40,11 +40,17 @@ public class ConnectionListener implements Listener {
 	@EventHandler
 	public void onDisconnection(PlayerQuitEvent event) {
 		Player player = event.getPlayer(); // On récupère le joueur concerné par l'évent
-		Location loc = player.getLocation(); // On récupère son endroit de déconnexion
-		String disconnectionString = getDisconnectionLocString(loc); // On récupère ses coordonnées de déconnection en un String suivant un pattern spécifique
-		
 		FileConfiguration yml = YamlConfiguration.loadConfiguration(main.getDisconnectionLocationsFile()); // On récupère puis on charge le fichier des endroits de deconnexions des joueurs
-		yml.set(player.getUniqueId().toString(), disconnectionString); // On inscrit la position de déconnexion du joueur dans le fichier
+		
+		if(main.getLinkedDongeon().containsKey(player.getUniqueId())) { // Si le joueur est dans un donjon (lors de sa déconnexion donc) alors :
+			Dongeon dj = main.getLinkedDongeon().get(player.getUniqueId()); // On récupère le donjon dans lequel se trouve
+			String str = getDisconnectionLocString(dj.getDungeonStartLocation()); // On récupère la position de départ du donjon sous forme de String suivant un pattern spécifique
+			yml.set(player.getUniqueId().toString(), str); // On charge le fichier qui contient les endroits de déconnexion
+		} else { // Si le joueur n'est pas dans un donjon lors de sa deconnexion alors :
+			Location loc = player.getLocation(); // On récupère son endroit de déconnexion
+			String disconnectionString = getDisconnectionLocString(loc); // On récupère ses coordonnées de déconnection en un String suivant un pattern spécifique
+			yml.set(player.getUniqueId().toString(), disconnectionString); // On inscrit la position de déconnexion du joueur dans le fichier
+		}
 		
 		// On sauvegarde le fichier sur lequel on a écrit
 		try {
@@ -52,20 +58,6 @@ public class ConnectionListener implements Listener {
 		} catch (IOException e) {
 			// Si une erreur de type IOException (erreur de fichiers) se produit, alors écrire l'erreur dans la console
 			e.printStackTrace();
-		}
-		
-		if(main.getLinkedDongeon().containsKey(player.getUniqueId())) { // Si le joueur est dans un donjon (lors de sa déconnexion donc)
-			Dongeon dj = main.getLinkedDongeon().get(player.getUniqueId()); // On récupère le donjon dans lequel se trouve
-			String str = getDisconnectionLocString(dj.getDungeonStartLocation()); // On récupère la position de départ du donjon sous forme de String suivant un pattern spécifique
-			YamlConfiguration.loadConfiguration(main.getDisconnectionLocationsFile()).set(player.getUniqueId().toString(), str); // On charge le fichier qui contient les endroits de déconnexion
-			
-			// On sauvegarde le fichier sur lequel on a écrit
-			try {
-				yml.save(main.getDisconnectionLocationsFile());
-			} catch (IOException e) {
-				// Si une erreur de type IOException (erreur de fichiers) se produit, alors écrire l'erreur dans la console
-				e.printStackTrace();
-			}
 		}
 	}
 	

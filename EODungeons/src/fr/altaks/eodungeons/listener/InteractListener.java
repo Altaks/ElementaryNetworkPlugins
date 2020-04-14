@@ -28,11 +28,8 @@ public class InteractListener implements Listener {
 	private List<Material> interactableSignTypes = new ArrayList<Material>(); // Liste des types de panneaux avec lesquels les joueurs pourront interagir
 	private List<Material> systemSignTypes = new ArrayList<Material>(); // Liste des types de panneaux avec lesquels le plugin va interagir
 	{
-		Material[] interactionSignTypes = { Material.DARK_OAK_SIGN, Material.DARK_OAK_WALL_SIGN }; 
-		this.interactableSignTypes.addAll(Arrays.asList(interactionSignTypes)); // On rajoute les panneaux en chêne noir à la liste des panneaux avec lesquels les joueurs pourront interagir
-
-		Material[] systemSignTypes = { Material.ACACIA_SIGN, Material.ACACIA_WALL_SIGN };
-		this.systemSignTypes.addAll(Arrays.asList(systemSignTypes)); // On rajoute les panneaux en acacia à la liste des panneaux avec lesquels le plugin va interagir
+		this.interactableSignTypes.addAll(Arrays.asList( Material.DARK_OAK_SIGN, Material.DARK_OAK_WALL_SIGN )); // On rajoute les panneaux en chêne noir à la liste des panneaux avec lesquels les joueurs pourront interagir
+		this.systemSignTypes.addAll(Arrays.asList( Material.ACACIA_SIGN, Material.ACACIA_WALL_SIGN )); // On rajoute les panneaux en acacia à la liste des panneaux avec lesquels le plugin va interagir
 	}
 	
 	private Main main; // Variable qui va stocker la classe Main
@@ -125,7 +122,7 @@ public class InteractListener implements Listener {
 				nextLocation.add(0, -3, 0); // on retire 3 au Y
 				if (this.interactableSignTypes.contains(nextLocation.getBlock().getType())) { // si à la nouvelle Location il y'a bien un panneau avec lequel les joueurs peuvent intéragir alors
 					Sign newSign = (Sign) nextLocation.getBlock(); // on récup le block en tant que Sign
-					return newSign; // on revoie le blocks
+					return newSign; // on revoie le sign
 				}
 			} else
 				return null; // Sinon on revoie rien
@@ -189,7 +186,7 @@ public class InteractListener implements Listener {
 		DongeonArea area = new DongeonArea(minLoc, maxLoc); // On récupère la zone du donjon
 		Dongeon newInstance = new Dongeon(main, player.getLocation(), dungeonName, area, players); // On génère une nouvelle instance du donjon
 		main.getServer().getPluginManager().registerEvents(newInstance, main); // On enregistre cette instance comme Listener indépendant
-		newInstance.start(); // On lance le donjon en interne
+		newInstance.start(); // On lance le donjon via la fonction de la classe dungeon
 	}
 	
 	/**

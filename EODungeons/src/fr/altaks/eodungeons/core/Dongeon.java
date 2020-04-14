@@ -276,7 +276,7 @@ public class Dongeon implements Listener {
 	public boolean isCollectionContainingPlayers(Collection<? extends Entity> collection) {
 		for(Entity o : collection) { // Pour chaque entité de la collection
 			if(!(o instanceof Player)) continue; // Si l'entité n'est pas un joueur, passer à l'entité suivante
-			return true; // Sinon, renvoyer que la collection contient des joueurs (return true)
+			if(this.activePlayers.contains((Player)o))return true; // Sinon, si le joueur est un joueur faisant partie des joueurs normalement présents dans ce donjon, renvoyer que la collection contient des joueurs (return true)
 		}
 		return false; // Renvoyer par défaut que la collection ne contient aucun joueur
 	}
@@ -320,20 +320,18 @@ public class Dongeon implements Listener {
 	 * @param loots -> Loots à donner
 	 * @param status -> Statut de victoire/défaite des joueurs par rapport au donjon.
 	 */
-	public void openLootsInv(List<Player> players, DungeonLoots loots, GameStatus status) {
-			   if(status == GameStatus.Win) { // Si les joueurs on gagné alors
-			Inventory inv = Bukkit.createInventory(null, 6 * 9, status.getInvName()); // On créé un inventaire avec le nom des inventaires de victoire
+	public void openLootsInv(List<Player> players, DungeonLoots loots, GameStatus status) {	   
+		Inventory inv = Bukkit.createInventory(null, 6 * 9, status.getInvName()); // On créé un inventaire avec le nom des inventaires de victoire
+		if(status.equals(GameStatus.Win)) { // Si les joueurs on gagné alors
 			loots.getWinLoots().forEach(item -> { // pour chaque item des loots de victoire :
 				inv.addItem(item); // On ajoute l'item dans l'inventaire
 			});
-			players.forEach(player -> player.openInventory(inv)); // pour chaque joueur de la liste, on lui fait ouvrir l'inventaire
-		} else if(status == GameStatus.Loose) { // Si les joueurs on perdu alors
-			Inventory inv = Bukkit.createInventory(null, 6 * 9, status.getInvName()); // On créé un inventaire avec le nom des inventaires de défaite
+		} else if(status.equals(GameStatus.Loose)){ // Si les joueurs on perdu alors
 			loots.getLooseLoots().forEach(item -> { // pour chaque item des loots de défaite :
 				inv.addItem(item); // On ajoute l'item dans l'inventaire
 			});
-			players.forEach(player -> player.openInventory(inv)); // pour chaque joueur de la liste, on lui fait ouvrir l'inventaire
 		}
+		players.forEach(player -> player.openInventory(inv)); // pour chaque joueur de la liste, on lui fait ouvrir l'inventaire
 	}
 	
 	/**
