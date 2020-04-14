@@ -4,4 +4,4 @@ Ici sont sauvegardés tous les plugins et projets de plugins conçus par Altaks,
 
 ​##​ ​Auteur
 
-​ - ​**Altaks**​ - ​*Initial work*​ - [​Altair61-Dev​](https://github.com/Altair61-Dev)
+​ -​**Altaks**​ - ​*Initial work*​ - [ltaks](https://github.com/Altas)
