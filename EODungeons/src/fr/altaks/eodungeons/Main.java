@@ -11,6 +11,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import fr.altaks.eodungeons.commands.StopDungeonCommand;
 import fr.altaks.eodungeons.core.Dongeon;
 import fr.altaks.eodungeons.listener.ConnectionListener;
 import fr.altaks.eodungeons.listener.InteractListener;
@@ -30,10 +31,12 @@ public class Main extends JavaPlugin { // Il s'agit d'une classe Main qui hérite
 	private final HashMap<UUID, Dongeon> spawnedBossesIDs = new HashMap<>(); // Liaisons Entité (étant un boss ou miniboss) -> Donjon
 	private final HashMap<String, Dongeon> activeDungeons = new HashMap<>(); // Liaisons Nom de donjon -> Donjon
 	
-	public static final String PLUGIN_PREFIX = "§7[§eEODungeons§7] §6\u00BB"; // Préfixe de tchat du plugin
+	public static final String PLUGIN_PREFIX = "§7[§eEODungeons§7] §6\u00BB "; // Préfixe de tchat du plugin
 	
 	// Dossiers des listes de mobs, listes de loots, et fichier de sauvegarde des endroits de déconnection
 	private File waveDirectory, lootsDirectory, disconnectionLocsFile;
+	
+	public static boolean isDebugging = true;
 	
 	@Override
 	public void onEnable() { // Voici la fonction qui se lance à chaque démarrage / reload d'un serveur
@@ -66,6 +69,11 @@ public class Main extends JavaPlugin { // Il s'agit d'une classe Main qui hérite
 		getServer().getPluginManager().registerEvents(new PlayerAttackMobListener(this), this);
 		getServer().getPluginManager().registerEvents(new ConnectionListener(this), this);
 		
+		/*
+		 * Activation de la commande stopcommand
+		 */
+		getCommand("stopdungeon").setExecutor(new StopDungeonCommand(this));
+		getCommand("stopdungeon").setTabCompleter(new StopDungeonCommand(this));
 	}
 	
 	/*
@@ -115,7 +123,7 @@ public class Main extends JavaPlugin { // Il s'agit d'une classe Main qui hérite
 		});
 		
 		this.activeDongeons.forEach(dongeon -> { // pour chaque donjon lancé
-			dongeon.stop_loosing(); // stopper le donjon en mode échec des joueurs
+			dongeon.stop_loosing(true); // stopper le donjon en mode échec des joueurs
 		});
 	}
 	

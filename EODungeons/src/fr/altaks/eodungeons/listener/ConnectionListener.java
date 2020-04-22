@@ -93,7 +93,9 @@ public class ConnectionListener implements Listener {
 	@EventHandler
 	public void spawnAtDisconnectionLocs(PlayerJoinEvent event) {
 		Player player = event.getPlayer(); // On récupère le joueur
-		Location location = readLocFromString(YamlConfiguration.loadConfiguration(main.getDisconnectionLocationsFile()).getString(player.getUniqueId().toString())); // On récupère la position de déconnexion de ce joueur inscrite dans le fichier
+		FileConfiguration yml = YamlConfiguration.loadConfiguration(main.getDisconnectionLocationsFile());
+		if(!yml.isSet(player.getUniqueId().toString())) return;
+		Location location = readLocFromString(yml.getString(player.getUniqueId().toString())); // On récupère la position de déconnexion de ce joueur inscrite dans le fichier
 		player.teleport(location); // On téléporte le joueur à cette position
 	}
 

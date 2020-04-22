@@ -11,6 +11,7 @@ import org.bukkit.World;
 import org.bukkit.block.BlockState;
 import org.bukkit.block.Sign;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 
 import fr.altaks.eodungeons.util.SortingUtil;
@@ -36,6 +37,9 @@ public class DongeonArea {
 		this.minLoc = minLoc; this.maxLoc = maxLoc;
 	}
 	
+	public Location getMinLoc() { return this.minLoc; }
+	public Location getMaxLoc() { return this.maxLoc; }
+	
 	/**
 	 * Méthode qui permet de savoir s'il reste une entité non-joueur dans la zone
 	 * @return boolean -> est ce qu'il reste une entité non-joueur dans la zone
@@ -52,12 +56,12 @@ public class DongeonArea {
 		int maxX = maxChunk.getX(); // On récup les coordoonées X de chunk du chunk maximal
 		int maxZ = maxChunk.getZ(); // On récup les coordoonées Y de chunk du chunk maximal
 		
-		List<Entity> entities = new ArrayList<>(); // On créé une liste d'entités vide
+		List<Entity> entities = new ArrayList<Entity>(); // On créé une liste d'entités vide
 		
-		for (int x = minX; x <= maxX + 1; x++) { // pour chaque X de chunk entre minX et maxX
-			for(int z = minZ; z <= maxZ + 1; z++) { // pour chaque Z de chunk entre minZ et maxZ
+		for (int x = minX; x <= maxX; x++) { // pour chaque X de chunk entre minX et maxX
+			for(int z = minZ; z <= maxZ; z++) { // pour chaque Z de chunk entre minZ et maxZ
 				Arrays.asList(world.getChunkAt(x, z).getEntities()).forEach(entity -> { // Pour chaque entité dans le chunk aux coordonnées de chunk x,z ->
-					if(!(entity instanceof Player)) { // Si l'entité n'est pas un joueur
+					if(!(entity instanceof Player) && (entity instanceof LivingEntity)) { // Si l'entité n'est pas un joueur
 						entities.add(entity); // Ajouter l'entité dans la liste des entités de la zone
 					}
 				});
@@ -74,8 +78,7 @@ public class DongeonArea {
 			} else continue; // Sinon on passe à l'entité suivante
 		}
 		
-		if(isAliveEntity) return true; // S'il reste une entité vivante alors on renvoie true
-		return false; // On renvoie par défaut qu'il ne reste plus d'entité vivante (renvoyer false) 
+		return isAliveEntity; // S'il reste une entité vivante alors on renvoie true sinon on renvoie false
 	}
 	
 	/**

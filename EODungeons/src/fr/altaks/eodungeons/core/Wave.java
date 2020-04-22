@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.StringJoiner;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -17,7 +18,6 @@ import org.bukkit.craftbukkit.v1_15_R1.entity.CraftEntity;
 import org.bukkit.craftbukkit.v1_15_R1.inventory.CraftItemStack;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.LivingEntity;
-import org.bukkit.entity.Player;
 import org.bukkit.inventory.EntityEquipment;
 import org.bukkit.inventory.ItemStack;
 
@@ -33,7 +33,7 @@ public class Wave {
 	/**
 	 * Liste des mobs contenus dans la vague
 	 */
-	public final List<WaveMob> waveMobs = new ArrayList<Wave.WaveMob>();
+	public List<WaveMob> waveMobs = new ArrayList<Wave.WaveMob>();
 	
 	/**
 	 * Constructeur qui va initialiser tous les mobs de l'ArrayList, permet de stocker les vagues
@@ -41,7 +41,7 @@ public class Wave {
 	 * @param mobs -> Liste des Mobs de la vague
 	 */
 	public Wave(List<WaveMob> mobs) {
-		mobs.forEach(mob -> waveMobs.add(mob)); // Pour chaque mob de la liste, l'ajouter à la liste de "this" et non celle du constructeur
+		this.waveMobs = mobs; // Pour chaque mob de la liste, l'ajouter à la liste de "this" et non celle du constructeur
 	}
 	
 	/**
@@ -63,7 +63,7 @@ public class Wave {
 	@SuppressWarnings("deprecation")
 	public static Wave loadWaveFromYmlFile(Dongeon dungeon, Main main, File file) throws NullPointerException, IOException {
 		if(!file.exists()) return null; // Si le fichier n'existe pas, provoquer une NullPointerException
-		
+		if(Main.isDebugging) dungeon.getActivePlayers().forEach(p -> p.sendMessage("§c\u00BB Liste \"" + file.getName() + "\" en cours de load"));
 		FileConfiguration yml = YamlConfiguration.loadConfiguration(file); // On charge le fichier en tant que FileConfiguration
 				
 		List<WaveMob> mobs = new ArrayList<Wave.WaveMob>(); // On créé une liste de mobs vide qui sera celle de la vague.
@@ -77,22 +77,34 @@ public class Wave {
 				spawnLocations.add(getLocationFromYmlString(location));
 			}
 			
+			
+			if(Main.isDebugging) {
+				StringJoiner builder = new StringJoiner("\n");
+				spawnLocations.forEach(loc -> builder.add("> x: " + loc.getBlockX() + "/y:" + loc.getBlockY() + "/z:" + loc.getBlockZ()));
+				dungeon.getActivePlayers().forEach(p -> p.sendMessage("§e\u00BB Mob en cours de load spawnera à : \n" + builder.toString()));
+			}
+			
+			
 			// Obtenir le type d'entité depuis MC
 			EntityType baseEntityType = EntityType.FOX;
 			String baseEntityTypeKey = yml.getString(entity + ".entity-type");
 			baseEntityType = EntityType.fromName(baseEntityTypeKey.split(":")[1]);
+			if(Main.isDebugging) dungeon.getActivePlayers().forEach(p -> p.sendMessage("§e\u00BB Mob en cours de load sera : " + baseEntityTypeKey));
 			
 			// Obtenir le type de mob : Est ce un mob, boss ou worldboss ?
 			DungeonMobType mobType = DungeonMobType.MOB;
 			String mobTypeKey = yml.getString(entity + ".dongeon-mob-type");
 			mobType = DungeonMobType.getByConfigKey(mobTypeKey);
+			if(Main.isDebugging) dungeon.getActivePlayers().forEach(p -> p.sendMessage("§c\u00BB Mob en cours de load sera un mob de donjon : " + mobTypeKey));
 			
 			// Obtenir la vie de l'entité
 			double health = yml.getDouble(entity + ".health");
+			if(Main.isDebugging) dungeon.getActivePlayers().forEach(p -> p.sendMessage("§c\u00BB Mob en cours de load aura " + health + "pv"));
 			
 			// Obtenir le NBTTag qui sera appliqué à l'entité
 			String nbtTag = yml.getString(entity + ".nbt-tag");
 			NBTTagCompound compound = new NBTTagCompound().getCompound(nbtTag);
+			if(Main.isDebugging) dungeon.getActivePlayers().forEach(p -> p.sendMessage("§c\u00BB Mob en cours de load aura le tag : " + nbtTag));
 			
 			// Obtenir l'inventaire :
 			
@@ -188,10 +200,16 @@ public class Wave {
 			this.mobEntityType = mobEntityType;
 			
 			this.inventory = inventory;
+			
+			nbtTag.setString("id", basicEntityType.getKey().toString());
 			this.nbtTag = nbtTag;
 			
 			this.dongeon = dungeon;
 			this.main = main;
+		}
+		
+		public Dongeon getDungeon() {
+			return this.dongeon;
 		}
 		
 		/**
@@ -199,49 +217,69 @@ public class Wave {
 		 */
 		@SuppressWarnings("deprecation")
 		public void summon() {
+			if(Main.isDebugging) getDungeon().getActivePlayers().forEach(p -> p.sendMessage("§c\u00BB Mob en cours de spawn"));
+			
 			this.spawnLocations.forEach(location -> { // Pour chacune des positions d'apparition
-				location.getWorld().spawn(location, basicEntityType.getEntityClass(), entity -> { // On fait spawn l'entité mais avant :
-					if((entity instanceof LivingEntity) && !(entity instanceof Player)) { // Si l'entité est une entité vivante et que ce n'est pas un joueur :
-						LivingEntity livingEntity = (LivingEntity) entity; // on récupère l'entité en tant qu'entité vivante (LivingEntity)
-						
-						livingEntity.setMaxHealth(health); // On set la vie maximale de l'entité au niveau désigné par le constructeur 
-						livingEntity.setHealth(health); // On set la vie actuelle de l'entité au niveau désigné par le constructeur
-						
-						EntityEquipment equipement = ((LivingEntity) entity).getEquipment(); // On récupère l'équipement de l'entité
-						
-						// On place l'armure du mob dans ses slots
-						equipement.setHelmet(inventory.getHelmet());
-						equipement.setChestplate(inventory.getChestplate());
-						equipement.setLeggings(inventory.getLeggings());
-						equipement.setBoots(inventory.getBoots());
-						
-						// On place les items destinés aux mains dans leurs slots
-						equipement.setItemInMainHand(inventory.getMainHand());
-						equipement.setItemInOffHand(inventory.getOffHand());
-						
-						// On désactive les chances de drop de l'armure
-						equipement.setHelmetDropChance(0f);
-						equipement.setChestplateDropChance(0f);
-						equipement.setLeggingsDropChance(0f);
-						equipement.setBootsDropChance(0f);
-						
-						// On désactive les chances de drop des items placés dans les mains
-						equipement.setItemInMainHandDropChance(0f);
-						equipement.setItemInOffHandDropChance(0f);
-
-						Entity nmsEntity = ((CraftEntity)entity).getHandle(); // On récupère l'entité en NMS
-						
-						nmsEntity.f(nbtTag); // On place le NBTTag sur l'entité (peut override certains trucs)
-						
-						((LivingEntity) entity).setRemoveWhenFarAway(false); // On désactive le dispawn naturel de l'entité
-						
-						main.getActiveEntityIDs().add(entity.getUniqueId()); // On rajoute dans le main cette entité en tant qu'entité spawnée par un donjon
-						if(this.mobEntityType.equals(DungeonMobType.BOSS) || this.mobEntityType.equals(DungeonMobType.WORLDBOSS)) { // Si ce mob est un boss/worldboss alors :
-							main.getSpawnedBossesIDs().put(entity.getUniqueId(), this.dongeon); // On place cette entité en liason avec le donjon dans la HashMap des boss spawnées par des donjons
-						}
-					}
-				});
+								
+				org.bukkit.entity.Entity entity = location.getWorld().spawn(location, basicEntityType.getEntityClass());
 				
+				if(Main.isDebugging) getDungeon().getActivePlayers().forEach(p -> p.sendMessage("§c\u00BB Entité de type " + basicEntityType.getKey().toString() +" spawnée aux coordoonées x:" + location.getBlockX() + "/y:"+location.getBlockY()+"/z:"+location.getBlockZ()));
+				
+				if((entity instanceof LivingEntity)) { // Si l'entité est une entité vivante et que ce n'est pas un joueur :
+					
+					if(Main.isDebugging) getDungeon().getActivePlayers().forEach(p -> p.sendMessage("§c\u00BB Entité de type vivante"));
+					
+					LivingEntity livingEntity = (LivingEntity) entity; // on récupère l'entité en tant qu'entité vivante (LivingEntity)
+					
+					livingEntity.setMaxHealth(health); // On set la vie maximale de l'entité au niveau désigné par le constructeur 
+					livingEntity.setHealth(health); // On set la vie actuelle de l'entité au niveau désigné par le constructeur
+					
+					if(Main.isDebugging) getDungeon().getActivePlayers().forEach(p -> p.sendMessage("§c\u00BB Vie appliquée à l'entité"));
+					
+					EntityEquipment equipement = ((LivingEntity) entity).getEquipment(); // On récupère l'équipement de l'entité
+					
+					// On place l'armure du mob dans ses slots
+					equipement.setHelmet(inventory.getHelmet());
+					equipement.setChestplate(inventory.getChestplate());
+					equipement.setLeggings(inventory.getLeggings());
+					equipement.setBoots(inventory.getBoots());
+					
+					// On place les items destinés aux mains dans leurs slots
+					equipement.setItemInMainHand(inventory.getMainHand());
+					equipement.setItemInOffHand(inventory.getOffHand());
+					
+					// On désactive les chances de drop de l'armure
+					equipement.setHelmetDropChance(0f);
+					equipement.setChestplateDropChance(0f);
+					equipement.setLeggingsDropChance(0f);
+					equipement.setBootsDropChance(0f);
+					
+					// On désactive les chances de drop des items placés dans les mains
+					equipement.setItemInMainHandDropChance(0f);
+					equipement.setItemInOffHandDropChance(0f);
+					
+					if(Main.isDebugging) getDungeon().getActivePlayers().forEach(p -> p.sendMessage("§c\u00BB Equipement appliqué à l'entité"));
+
+					Entity nmsEntity = ((CraftEntity)entity).getHandle(); // On récupère l'entité en NMS
+					
+					nmsEntity.d(nbtTag); // On place le NBTTag sur l'entité (peut override certains trucs)
+					
+					if(Main.isDebugging) getDungeon().getActivePlayers().forEach(p -> p.sendMessage("§c\u00BB NBTTag appliqué à l'entité"));
+					
+					((LivingEntity) entity).setRemoveWhenFarAway(false); // On désactive le dispawn naturel de l'entité
+					
+					if(Main.isDebugging) getDungeon().getActivePlayers().forEach(p -> p.sendMessage("§c\u00BB Dispawn naturel désactivé"));
+					
+					main.getActiveEntityIDs().add(entity.getUniqueId()); // On rajoute dans le main cette entité en tant qu'entité spawnée par un donjon
+					if(this.mobEntityType.equals(DungeonMobType.BOSS) || this.mobEntityType.equals(DungeonMobType.WORLDBOSS)) { // Si ce mob est un boss/worldboss alors :
+						main.getSpawnedBossesIDs().put(entity.getUniqueId(), this.dongeon); // On place cette entité en liason avec le donjon dans la HashMap des boss spawnées par des donjons
+					}
+					
+					if(Main.isDebugging) getDungeon().getActivePlayers().forEach(p -> p.sendMessage("§c\u00BB Entité complétée"));
+
+				} else {
+					if(Main.isDebugging) getDungeon().getActivePlayers().forEach(p -> p.sendMessage("§c\u00BB Entité non-vivante"));
+				}
 			});
 		}
 		
@@ -335,17 +373,29 @@ public class Wave {
 	 */
 	public static ItemStack itemReader(ConfigurationSection section) {
 		String itemNameSpacedKey = section.getString("item-name");
+		String compoundString = section.getString("nbt-tag");
 		int stackAmount = section.getInt("amount");
-		NBTTagCompound compound = new NBTTagCompound().getCompound(section.getString("nbt-tag"));
+		
+		boolean nbtTagNotNull = false;
+		NBTTagCompound compound = new NBTTagCompound();
+		if(!(compoundString.equalsIgnoreCase("{}") || compoundString.equalsIgnoreCase(""))) {
+			compound = new NBTTagCompound().getCompound(compoundString);
+			compound.setString("id", itemNameSpacedKey);
+			compound.setInt("amount", stackAmount);
+			nbtTagNotNull = true;
+		}
+		
 		Material material = Material.getMaterial(itemNameSpacedKey.split(":")[1]);
 		
 		ItemStack itemBase = new ItemStack(material, stackAmount);
-		
-		net.minecraft.server.v1_15_R1.ItemStack nmsItem = CraftItemStack.asNMSCopy(itemBase);
-		nmsItem.setTag(compound);
-		
-		ItemStack finalItem = CraftItemStack.asBukkitCopy(nmsItem);
-		return finalItem;
+		if(nbtTagNotNull) {
+			net.minecraft.server.v1_15_R1.ItemStack nmsItem = CraftItemStack.asNMSCopy(itemBase);
+			nmsItem.setTag(compound);
+			
+			ItemStack finalItem = CraftItemStack.asBukkitCopy(nmsItem);
+			return finalItem;
+		}
+		return itemBase;
 	}
 
 }

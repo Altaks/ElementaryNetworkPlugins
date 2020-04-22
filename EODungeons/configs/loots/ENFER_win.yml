@@ -1,0 +1,12 @@
+item-1: 
+  item-name: "minecraft:diamond_sword"
+  amount: 1
+  nbt-tag: "{}"
+item-2:
+  item-name: "minecraft:diamond_pickaxe"
+  amount: 1
+  nbt-tag: "{}"
+item-3: 
+  item-name: "minecraft:diamond_axe"
+  amount: 1
+  nbt-tag: "{}"

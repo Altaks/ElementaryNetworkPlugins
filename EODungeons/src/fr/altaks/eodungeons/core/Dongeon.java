@@ -5,8 +5,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.UUID;
@@ -19,8 +19,8 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.PlayerDeathEvent;
-import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import fr.altaks.eodungeons.Main;
@@ -34,12 +34,7 @@ public class Dongeon implements Listener {
 	private final List<Player> activePlayers = new ArrayList<Player>(); // Liste des joueurs encore actifs dans le donjon
 	private final List<UUID> beginningPlayers = new ArrayList<UUID>(); // Liste des joueurs actifs au départ du donjon
 	
-	private final HashMap<Location, Wave> waveActivationLocations = new HashMap<Location, Wave>(); // HashMap des Locations de panneaux -> vagues
-	private Iterator<Entry<Location, Wave>> currentIteration; // Itérateur de l'HashMap juste au dessus
-	private Entry<Location, Wave> currentWave; // Entrée actuelle de l'itérateur
-	
-	private Radius currentRadius; // Radius actuel en analyse
-	private Location currentLocation; // Localisation actuelle en analyse
+	private final LinkedHashMap<Location, Wave> waveActivationLocations = new LinkedHashMap<Location, Wave>(); // HashMap des Locations de panneaux -> vagues
 	
 	private DongeonArea area; // Zone du donjon
 	private String dungeonName = UUID.randomUUID().toString(); // Nom du donjon, défini par défaut sur une UUID random
@@ -64,8 +59,8 @@ public class Dongeon implements Listener {
 			activePlayers.add(player); // On ajoute ce joueur aux joueurs actifs
 			beginningPlayers.add(player.getUniqueId()); // On ajoute son UUID aux UUIDs des joueurs du départ
 		});
-		this.currentIteration = waveActivationLocations.entrySet().iterator(); // On définit l'itérateur
 		this.dongeonActivationLocation = dongeonActivationLocation;
+		if(Main.isDebugging) this.activePlayers.forEach(p -> p.sendMessage("§c\u00BB Donjon " + dungeonName + " chargé"));
 	}
 	
 	/**
@@ -84,22 +79,37 @@ public class Dongeon implements Listener {
 			activePlayers.add(player); // On ajoute ce joueur aux joueurs actifs
 			beginningPlayers.add(player.getUniqueId()); // On ajoute son UUID aux UUIDs des joueurs du départ
 		});
-		this.currentIteration = waveActivationLocations.entrySet().iterator(); // On définit l'itérateur
 		this.dongeonActivationLocation = dongeonActivationLocation;
+		if(Main.isDebugging) this.activePlayers.forEach(p -> p.sendMessage("§c\u00BB Donjon " + dungeonName + " chargé"));
 	}
 	
 	/**
 	 * Fonction pour lancer un donjon
 	 */
-	@SuppressWarnings("deprecation")
 	public void start() {
-		if(main.getActiveDongeons().contains(this)) return; // Si le donjon est déja actif, arrêter de lire la fonction.
+		if(Main.isDebugging) this.activePlayers.forEach(p -> p.sendMessage("§c\u00BB Donjon " + dungeonName + " lancé"));
+		// Link du donjon au main (Attention, ici il y'a une utilisation de surcharge de fonction)
+		if(main.getActiveDongeons().contains(this) || main.getActiveDungeons().containsValue(this)) {
+			if(Main.isDebugging) this.activePlayers.forEach(p -> p.sendMessage("§c\u00BB Ce donjon est déjà lancé"));
+			return; // Si le donjon est déja actif, arrêter de lire la fonction.
+		}
 		
+		main.getActiveDongeons().add(this); // On ajoute à la liste des donjons actifs ce donjon
+		main.getActiveDungeons().put(dungeonName, this); // On ajoute à la l'HashMap des donjons actifs le nom du donjon avec le donjoon
+		this.activePlayers.forEach(player -> main.getLinkedDongeon().put(player.getUniqueId(), this)); // Pour chaque joueur actif, on ajoute son UUID ainsi que ce donjon, à la HashMap des joueurs dans des donjons
+				
+		
+		if(Main.isDebugging) this.activePlayers.forEach(p -> p.sendMessage("§c\u00BB Chargement des listes de mobs..."));
 		Sign[] systemSigns = area.getSystemSignsFromArea(); // On récupère les panneaux de la zone du donjon, sous forme de tableau déja trié
+		if(Main.isDebugging) this.activePlayers.forEach(p -> p.sendMessage("§e\u00BB Zone du donjon : \n "
+				+ "POS_1 > x:" + area.getMinLoc().getBlockX() + "/y:" + area.getMinLoc().getBlockY() + "/z:" + area.getMinLoc().getBlockZ() + "\n"
+				+ "POS_2 > x:" + area.getMaxLoc().getBlockX() + "/y:" + area.getMaxLoc().getBlockY() + "/z:" + area.getMaxLoc().getBlockZ()));
 		for(Sign sign : systemSigns) { // pour chaque panneau du tableau
 			try {
+				File file = new File(main.getWaveDirectory() + sign.getLines()[1].split(":")[1].toString() + ".yml");
+				if(!file.exists() && Main.isDebugging) getActivePlayers().forEach(p -> p.sendMessage("§e\u00BB Fichier de la liste " + file.getName() + " inexistante"));
 				// on ajoute à la HashMap l'emplacement du panneau avec la vague (importée depuis un fichier)
-				waveActivationLocations.put(sign.getLocation(), Wave.loadWaveFromYmlFile(this, main, new File(main.getWaveDirectory() + sign.getLines()[1].split(":")[1] + ".yml")));
+				waveActivationLocations.put(sign.getLocation(), Wave.loadWaveFromYmlFile(this, main, file));
 			} catch (NullPointerException e) {
 				// Si une NullPointerException se produit, alors on prévient la console via le Logger de Bukkit, puis on écrit l'erreur dans la console
 				Bukkit.getLogger().warning("LISTE \""+sign.getLines()[1].split(":")[1]+"\" NON TROUVEE");
@@ -109,44 +119,77 @@ public class Dongeon implements Listener {
 				Bukkit.getLogger().warning("LISTE \""+sign.getLines()[1].split(":")[1]+"\" NON TROUVEE");
 				e.printStackTrace();
 			}
+			if(Main.isDebugging) this.activePlayers.forEach(p -> p.sendMessage("§c\u00BB Liste " + sign.getLine(0).split(":")[1] + " chargée"));
 		}
+		if(Main.isDebugging) this.activePlayers.forEach(p -> p.sendMessage("§c\u00BB Listes chargées"));
 		
-		
+		if(Main.isDebugging) this.activePlayers.forEach(p -> p.sendMessage("§c\u00BB Chargement des loots..."));
 		// On récupère les fichiers des listes de loots
-		File winLoots = new File(main.getLootsDirectory() + File.separator + dungeonName + "_win.yml");
-		File failLoots = new File(main.getLootsDirectory() + File.separator + dungeonName + "_loose.yml");
+		File winLoots = new File(main.getLootsDirectory() + dungeonName + "_win.yml");
+		File failLoots = new File(main.getLootsDirectory() + dungeonName + "_loose.yml");
 		
 		// On affecte les Loots du donjon avec les loots lus sur les deux fichiers
 		this.loots = LootsUtil.getDungeonLoots(main, winLoots, failLoots);
 		
-		// Link du donjon au main (Attentio, ici il y'a une utilisation de surcharge de fonction)
-		main.getActiveDongeons().add(this); // On ajoute à la liste des donjons actifs ce donjon
-		main.getActiveDungeons().put(dungeonName, this); // On ajoute à la l'HashMap des donjons actifs le nom du donjon avec le donjoon
-		this.activePlayers.forEach(player -> main.getLinkedDongeon().put(player.getUniqueId(), this)); // Pour chaque joueur actif, on ajoute son UUID ainsi que ce donjon, à la HashMap des joueurs dans des donjons
-		
+		if(Main.isDebugging) this.activePlayers.forEach(p -> p.sendMessage("§c\u00BB Loots chargés"));
+				
+		if(Main.isDebugging) this.activePlayers.forEach(p -> p.sendMessage("§c\u00BB Lancement de la boucle des vagues"));
 		// Boucle de vérification des vagues, sans fin sauf appel de cancel() , toutes les secondes
-		Bukkit.getScheduler().runTaskTimer(main, new BukkitRunnable() {
+		
+		new BukkitRunnable() {
+			
+			final Iterator<Entry<Location, Wave>> waveIterator = getWaveActivationLocations().entrySet().iterator();
+			Entry<Location, Wave> currentWave = waveIterator.next();
+			
+			Radius currentRadius = Radius.getRadiusFromSignLocation(currentWave.getKey());
+			{
+				if(Main.isDebugging) getActivePlayers().forEach(p -> {
+					p.sendMessage("§c\u00BB 1ère vague chargée, rayon §6" + currentRadius.getRadiusX() + "/" + currentRadius.getRadiusY() + "/" + currentRadius.getRadiusZ() + "\n"
+							+ "§cà partir de x:" + currentWave.getKey().getBlockX() + "/y:" + currentWave.getKey().getBlockY() + "/z:" + currentWave.getKey().getBlockX()) ;
+					p.sendMessage("§6\u00BB Nombre de vagues : " + getWaveActivationLocations().entrySet().size());
+				});
+			}
+			
 			@Override
 			public void run() {
 				if(!getArea().isAliveNonPlayerEntityInWholeArea()) {  // S'il n'y'a plus d'entité dans la zone du donjon alors :
-					if(!isNextWave()) { // S'il n'y pas d'autre vague alors
-						stop_winning(); // Les joueurs gagnent : On leur donne leurs loots de victoire
-						cancel(); // On stoppe la boucle
-					} else if(getActivePlayers().isEmpty()) { // Sinon si la liste des joueurs en vie/actifs sur ce donjon est vide, alors :
-						stop_loosing(); // Les joueurs perdent : On leur donne leurs loots de défaite
-						cancel(); // On stoppe la boucle 
-					} else { // Sinon
-						// On récupère une Collection de toutes les entités environnantes à la localisation à analyser dans un rayon défini par le panneau de la prochaine vague
-						Collection<? extends Entity> nearEntities = currentLocation.getWorld().getNearbyEntities(getCurrentSignLocation(), getCurrentRadius().getRadiusX(), getCurrentRadius().getRadiusY(), getCurrentRadius().getRadiusZ(), entity -> (entity instanceof Player));
-						if(isCollectionContainingPlayers(nearEntities)) { // Si cette Collection contient des joueurs alors
-							getCurrentWave().getValue().start(); // On démarre la vague suivante
-							activeNextWave(); // On avance l'itérateur d'une vague
+					
+					if(Main.isDebugging) getActivePlayers().forEach(p -> p.sendMessage("§c\u00BB Il n'y a pas de mob non joueur dans la zone"));
+					
+					if(getActivePlayers().isEmpty()) {
+						stop_loosing(false);
+						cancel();
+					} else if((!waveIterator.hasNext()) && (!getArea().isAliveNonPlayerEntityInWholeArea())){
+						if(Main.isDebugging) getActivePlayers().forEach(p -> p.sendMessage("§c\u00BB Les joueurs ont gagné !"));
+						stop_winning();
+						cancel();
+					} else {
+						Collection<Entity> collection = currentWave.getKey().getWorld().getNearbyEntities(currentWave.getKey(), currentRadius.getRadiusX(), currentRadius.getRadiusY(), currentRadius.getRadiusZ(), e -> (e instanceof Player));
+						
+						if(isCollectionContainingPlayers(collection)) {
+							// Changer la vague & faire spawn les mobs
+							currentWave.getValue().start();
+							currentWave = waveIterator.next();
+							
+							if(Main.isDebugging) getActivePlayers().forEach(p -> p.sendMessage("§c\u00BB Passage à la prochaine vague"));
+						
+						} else {
+							// Logger la non présence des joueurs dans la zone d'analyse
+							if(Main.isDebugging) getActivePlayers().forEach(p -> p.sendMessage("§c\u00BB Il n'y a aucun joueur dans la zone d'analyse ..."));
 						}
 					}
+					
+				} else if(getActivePlayers().isEmpty()){
+					stop_loosing(false);
+					cancel();
+				} else {
+					if(Main.isDebugging) getActivePlayers().forEach(p -> p.sendMessage("§c\u00BB Il reste des mobs dans la zone"));
 				}
 			}
 			
-		}, 0l, (long)1 * 20);
+		}.runTaskTimer(main, 0l, (long) 1 * 20);
+		
+		if(Main.isDebugging) this.activePlayers.forEach(p -> p.sendMessage("§c\u00BB Boucle des listes lancée"));
 	}
 	
 	/**
@@ -174,17 +217,17 @@ public class Dongeon implements Listener {
 	 * Fonction exécutée à chaque fermeture d'inventaire
 	 * @param event -> Event géré par Spigot
 	 */
-	@EventHandler
-	public void onInvClose(InventoryCloseEvent event) { 
-		Inventory inv = event.getInventory(); // On récupère l'inventaire concerné par l'event
-		if(event.getView().getTitle().equals(GameStatus.Win.getInvName()) || event.getView().getTitle().equals(GameStatus.Loose.getInvName())) { // Si le nom d'inventaire correspond à un des noms d'inventaire de loots de donjon alors
-			if(!(Arrays.asList(inv.getContents()).isEmpty() && Arrays.asList(inv.getStorageContents()).isEmpty())) { // Si l'inventaire n'est pas rempli
-				event.getPlayer().openInventory(inv); // On ré-ouvre l'inventaire au joueur
-				event.getPlayer().sendMessage(Main.PLUGIN_PREFIX + "Vous devez récupérer tous le butin"); // On lui signale qu'il doit récupérer tous les loots
-			}
-		}
-	
-	}
+//	@EventHandler
+//	public void onInvClose(InventoryCloseEvent event) { 
+//		Inventory inv = event.getInventory(); // On récupère l'inventaire concerné par l'event
+//		if(event.getView().getTitle().equals(GameStatus.Win.getInvName()) || event.getView().getTitle().equals(GameStatus.Loose.getInvName())) { // Si le nom d'inventaire correspond à un des noms d'inventaire de loots de donjon alors
+//			if(inv.getStorageContents().length != 0) {
+//				event.getPlayer().openInventory(inv); // On ré-ouvre l'inventaire au joueur
+//				event.getPlayer().sendMessage(Main.PLUGIN_PREFIX + "Vous devez récupérer tous le butin"); // On lui signale qu'il doit récupérer tous les loots
+//			}
+//		}
+//	
+//	}
 	
 	/**
 	 * Fonction qui donne les loots de victoire aux joueurs encore connectés
@@ -210,19 +253,20 @@ public class Dongeon implements Listener {
 	/**
 	 * Fonction qui donne les loots de défaite aux joueurs encore connectés
 	 */
-	public void stop_loosing() {
+	public void stop_loosing(boolean forced) {
 		List<Player> connectedPlayers = new ArrayList<Player>(); // On créé une liste de joueurs vide
 		this.beginningPlayers.forEach(uuid -> { // Pour chaque UUID de joueur présent au départ du donjon
 			try { // On essaie de récupérer le Player associé, puis de lui informer de la défaite
-				Bukkit.getPlayer(uuid).sendMessage(Main.PLUGIN_PREFIX + "Votre équipe à échoué à ce donjon. Bonne chance pour la prochaine fois !"
+				Player player = Bukkit.getPlayer(uuid);
+				player.sendMessage(Main.PLUGIN_PREFIX + "Votre équipe à échoué à ce donjon. Bonne chance pour la prochaine fois !"
 						+ "Tenez, un dédommagement");
-				Bukkit.getPlayer(uuid).teleport(this.dongeonActivationLocation); // On téléporte le joueur à l'entrée du donjon
+				player.teleport(this.dongeonActivationLocation); // On téléporte le joueur à l'entrée du donjon
 				connectedPlayers.add(Bukkit.getPlayer(uuid)); // On ajoute ce joueur dans liste des joueurs encore connectés
 				main.getLinkedDongeon().remove(uuid); // On retire le joueur de la HashMap des joueurs liés aux donjons
 			} catch (NullPointerException e) { /*En cas de NullPointerException, ne rien faire*/ }
 		});
 		
-		openLootsInv(connectedPlayers, loots, GameStatus.Loose); // On donne les loots de défaite aux joueurs encore connectés 
+		if(!forced) openLootsInv(connectedPlayers, loots, GameStatus.Loose); // On donne les loots de défaite aux joueurs encore connectés 
 		
 		main.getActiveDongeons().remove(this); // On retire le donjon de la liste des donjons actifs
 		main.getActiveDungeons().remove(this.dungeonName); // On retire le donjon de la HashMap des donjons actifs
@@ -244,29 +288,6 @@ public class Dongeon implements Listener {
 		return this.dongeonActivationLocation;
 	}
 	
-	/**
-	 * Permet de récupérer le rayon actuel qui est inspecté
-	 * @return Radius -> Rayon actuel à inspecter
-	 */
-	private Radius getCurrentRadius() {
-		return this.currentRadius;
-	}
-	
-	/**
-	 * Permet de récupérér la localisation actuelle à analyser 
-	 * @return Location -> Location à analyser
-	 */
-	private Location getCurrentSignLocation() {
-		return this.currentLocation;
-	}
-	
-	/**
-	 * Permet de savoir si l'itérateur des vagues possède une valeur suivante
-	 * @return boolean -> reste-t'il une vague après celle en cours 
-	 */
-	public boolean isNextWave() {
-		return this.currentIteration.hasNext();
-	}
 	
 	/**
 	 * Permet de savoir si la Collection contient des joueurs
@@ -275,20 +296,14 @@ public class Dongeon implements Listener {
 	 */
 	public boolean isCollectionContainingPlayers(Collection<? extends Entity> collection) {
 		for(Entity o : collection) { // Pour chaque entité de la collection
-			if(!(o instanceof Player)) continue; // Si l'entité n'est pas un joueur, passer à l'entité suivante
-			if(this.activePlayers.contains((Player)o))return true; // Sinon, si le joueur est un joueur faisant partie des joueurs normalement présents dans ce donjon, renvoyer que la collection contient des joueurs (return true)
+			if(!(o instanceof Player)) {
+				continue; // Si l'entité n'est pas un joueur, passer à l'entité suivante
+			} else if(this.activePlayers.contains((Player)o)) return true; // Sinon, si le joueur est un joueur faisant partie des joueurs normalement présents dans ce donjon, renvoyer que la collection contient des joueurs (return true)
 		}
 		return false; // Renvoyer par défaut que la collection ne contient aucun joueur
 	}
 	
-	/**
-	 * Permet d'activer la vague suivante
-	 */
-	public void activeNextWave() {
-		this.currentWave = this.currentIteration.next(); // On définit la vague courante, sur la vague suivante, tout en avançant d'une valeur l'itérateur
-		this.currentRadius = Radius.getRadiusFromSignLocation(this.currentWave.getKey()); //  On définit la radius acutel avec un radius lu sur le panneau situé à l'emplacement indiqué par l'entrée de HashMap
-		this.currentLocation = this.currentWave.getKey(); // On définit la localisation à analyser avec la l'Entry en cours
-	}
+	
 	
 	/**
 	 * Permet de récupérer les joueurs qui sont actifs/en vie dans le donjon
@@ -302,17 +317,11 @@ public class Dongeon implements Listener {
 	 * Permet de récupérer la HashMap des vagues du donjon liées aux Locations à analyser
 	 * @return HashMap<Location, Wave> -> HashMap des vagues liées aux Locations.
 	 */
-	public HashMap<Location, Wave> getWaveActivationLocations(){
+	public LinkedHashMap<Location, Wave> getWaveActivationLocations(){
 		return this.waveActivationLocations;
 	}
 
-	/**
-	 * Permet de récupérer l'entrée de la HashMap qui est en cours d'utilisation
-	 * @return Entry<Location, Wave> -> Entrée de la HashMap en cours d'utilisation
-	 */
-	public Entry<Location, Wave> getCurrentWave() {
-		return this.currentWave;
-	}
+	
 	
 	/**
 	 * Fonction qui permet d'ouvrir les inventaires de loots aux joueurs
@@ -321,17 +330,18 @@ public class Dongeon implements Listener {
 	 * @param status -> Statut de victoire/défaite des joueurs par rapport au donjon.
 	 */
 	public void openLootsInv(List<Player> players, DungeonLoots loots, GameStatus status) {	   
-		Inventory inv = Bukkit.createInventory(null, 6 * 9, status.getInvName()); // On créé un inventaire avec le nom des inventaires de victoire
-		if(status.equals(GameStatus.Win)) { // Si les joueurs on gagné alors
-			loots.getWinLoots().forEach(item -> { // pour chaque item des loots de victoire :
-				inv.addItem(item); // On ajoute l'item dans l'inventaire
-			});
-		} else if(status.equals(GameStatus.Loose)){ // Si les joueurs on perdu alors
-			loots.getLooseLoots().forEach(item -> { // pour chaque item des loots de défaite :
-				inv.addItem(item); // On ajoute l'item dans l'inventaire
-			});
-		}
+		Inventory inv = Bukkit.createInventory(null, 6 * 9, status.getInvName()); // On créé un inventaire avec le nom des inventaires de victoire		
+		if(status.equals(GameStatus.Win)) {
+			for(ItemStack item : loots.getWinLoots()) {
+				inv.addItem(item);
+			}
+		} else if(status.equals(GameStatus.Loose)) {
+			for(ItemStack item : loots.getWinLoots()) {
+				inv.addItem(item);
+			}
+		} else return;
 		players.forEach(player -> player.openInventory(inv)); // pour chaque joueur de la liste, on lui fait ouvrir l'inventaire
+		return;
 	}
 	
 	/**
@@ -392,7 +402,7 @@ class Radius {
 	 * @return Radius -> Rayon d'analyse
 	 */
 	public static Radius getRadiusFromSignLocation(Location location) {
-		Sign sign = (Sign)location.getBlock(); // On récupère le panneau à l'emplacement indiqué
+		Sign sign = (Sign) location.getBlock().getState(); // On récupère le panneau à l'emplacement indiqué
 		
 		String[] lines = sign.getLines(); // On récupère les lignes du panneau
 		

@@ -10,7 +10,10 @@ import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.Sign;
+import org.bukkit.block.data.BlockData;
 import org.bukkit.block.data.Directional;
+import org.bukkit.block.data.Rotatable;
+import org.bukkit.block.data.type.WallSign;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -28,7 +31,7 @@ public class InteractListener implements Listener {
 	private List<Material> interactableSignTypes = new ArrayList<Material>(); // Liste des types de panneaux avec lesquels les joueurs pourront interagir
 	private List<Material> systemSignTypes = new ArrayList<Material>(); // Liste des types de panneaux avec lesquels le plugin va interagir
 	{
-		this.interactableSignTypes.addAll(Arrays.asList( Material.DARK_OAK_SIGN, Material.DARK_OAK_WALL_SIGN )); // On rajoute les panneaux en chêne noir à la liste des panneaux avec lesquels les joueurs pourront interagir
+		this.interactableSignTypes.addAll(Arrays.asList( Material.DARK_OAK_WALL_SIGN )); // On rajoute les panneaux en chêne noir à la liste des panneaux avec lesquels les joueurs pourront interagir
 		this.systemSignTypes.addAll(Arrays.asList( Material.ACACIA_SIGN, Material.ACACIA_WALL_SIGN )); // On rajoute les panneaux en acacia à la liste des panneaux avec lesquels le plugin va interagir
 	}
 	
@@ -45,24 +48,33 @@ public class InteractListener implements Listener {
 	@EventHandler
 	public void onInteract(PlayerInteractEvent event) { 
 		if(!event.hasBlock() || event.getClickedBlock().getType().equals(Material.AIR) || event.getClickedBlock().getType().equals(Material.CAVE_AIR)) return; // Si il n'y pas de block cliqué ou qu'il s'agit d'air alors arrêter de lire la fonction
+		
 		Player player = event.getPlayer(); // On stocke le joueur dans une variable
 		Block block = event.getClickedBlock(); // On stocke le block sur lequel le joueur cliqué dans une variable
 		
 		if(this.interactableSignTypes.contains(block.getType()) && block.getWorld().getName().equalsIgnoreCase("World_DJ_EO")) { // si le type de block cliqué est dans la liste des panneaux cliquables et que le block est dans le monde "World_DJ_EO" alors
-			Sign sign = getLinkedSign((Sign)block); // On récupère le panneau à l'opposé du panneau cliqué
-			if(getDongeonSignTypes(sign).equals(DongeonSignTypes.STARTER)) { // Si le panneau est un panneau de lancement de donjon alors
-				
-				// Pattern des panneaux de démarrage :
-				
-				// LINE 0 : STATE.START
-				// LINE 1 : d:<dungeon-name>
-				// LINE 2 : <min-x>/<min-y>/<min-z>
-				// LINE 3 : <max-x>/<max-y>/<max-z>
-				
-				Location minLoc = readFromStringLocations(sign, sign.getLine(2)); // On récupère la position minimale extrème du donjon
-				Location maxLoc = readFromStringLocations(sign, sign.getLine(3)); // On récupère la position maximale extrème du donjon 
-				
-				launchDungeon((Sign) block, player, sign.getLine(1).split(":")[1], minLoc, maxLoc); // On lance le donjon
+						
+			Sign sign = (Sign)getLinkedSign(block).getState(); // On récupère le panneau à l'opposé du panneau cliqué
+			
+			try {
+				if(getDongeonSignTypes(sign).equals(DongeonSignTypes.STARTER)) { // Si le panneau est un panneau de lancement de donjon alors
+					
+					// Pattern des panneaux de démarrage :
+					
+					// LINE 0 : STATE.START
+					// LINE 1 : d:<dungeon-name>
+					// LINE 2 : <min-x>/<min-y>/<min-z>
+					// LINE 3 : <max-x>/<max-y>/<max-z>
+					
+					Location minLoc = readFromStringLocations(sign, sign.getLine(2)); // On récupère la position minimale extrème du donjon
+					Location maxLoc = readFromStringLocations(sign, sign.getLine(3)); // On récupère la position maximale extrème du donjon 
+					
+					launchDungeon((Sign) block.getState(), player, sign.getLine(1).split(":")[1], minLoc, maxLoc); // On lance le donjon
+					return;
+				}
+			} catch (NullPointerException e) {
+				event.getPlayer().sendMessage("Erreur de type NullPointerException : " + e.getMessage());
+				return;
 			}
 		}
 		
@@ -87,15 +99,22 @@ public class InteractListener implements Listener {
 	/**
 	 * Permet d'obtenir le panneau à l'opposé du panneau cliqué
 	 * @param sign -> panneau cliqué
-	 * @return Sign -> panneau à l'opposé du panneau cliqué
+	 * @return sign -> panneau à l'opposé du panneau cliqué
 	 * @throws NullPointerException -> peut renvoyer un bloc autre qu'un panneau et provoquer une NullPointerException
 	 */
-	public Sign getLinkedSign(Sign sign) throws NullPointerException {
-		Directional directional = (Directional) sign; // On récupère le panneau en tant que bloc directionnel
-		BlockFace facing = directional.getFacing(); // On récupère la direction un panneau
+	public Block getLinkedSign(Block sign) throws NullPointerException {
+		
+		BlockData blockData = sign.getBlockData();
+		
+		BlockFace facing = BlockFace.UP;
+		
+		if(blockData instanceof WallSign) {
+			facing = ((Directional)blockData).getFacing();
+		} else if(blockData instanceof Sign) {
+			facing = ((Rotatable)blockData).getRotation();
+		} else return null;
 
 		if (this.interactableSignTypes.contains(sign.getType())) { // si le panneau fait partie des panneau avec lesquels les joueurs peuvent intéragir alors
-			if (sign.getType().equals(Material.DARK_OAK_WALL_SIGN)) { // Si le panneau est un panneau mural alors
 				Location nextLocation = sign.getLocation(); // On récupère le placement du panneau actuel
 				switch (facing) { // en fonction de la direction du panneau clické on décale la "nextLocation" à 2 blocs opposé.
 				case NORTH:
@@ -114,21 +133,9 @@ public class InteractListener implements Listener {
 					return null;
 				}
 				if (this.interactableSignTypes.contains(nextLocation.getBlock().getType())) { // si à la nouvelle Location il y'a bien un panneau avec lequel les joueurs peuvent intéragir alors
-					Sign newSign = (Sign) nextLocation.getBlock(); // on récup le block en tant que Sign
-					return newSign; // on renvoie le sign
+					return (Block) nextLocation.getBlock(); // on récup le block en tant que Sign et on le renvoie
 				}
-			} else if (sign.getType().equals(Material.DARK_OAK_SIGN)) { // Si il s'agit d'un panneau simple (non mural) (décalage 3 blocks en dessous)
-				Location nextLocation = sign.getLocation(); // On récupère la position du bloc
-				nextLocation.add(0, -3, 0); // on retire 3 au Y
-				if (this.interactableSignTypes.contains(nextLocation.getBlock().getType())) { // si à la nouvelle Location il y'a bien un panneau avec lequel les joueurs peuvent intéragir alors
-					Sign newSign = (Sign) nextLocation.getBlock(); // on récup le block en tant que Sign
-					return newSign; // on revoie le sign
-				}
-			} else
-				return null; // Sinon on revoie rien
-		} else
-			return null; // Sinon on revoie rien
-
+			} else return null; // Sinon on revoie rien
 		return null; // Si aucune condition n'est remplie, on revoie rien
 	}
 	
@@ -142,8 +149,6 @@ public class InteractListener implements Listener {
 		String[] lines = sign.getLines(); // On récupère les lignes du panneau en tant que tableau de String
 		if(lines[0].equalsIgnoreCase(DongeonSignTypes.STARTER.systemKey())) { // s'il s'agit d'un panneau de lancement alors
 			return DongeonSignTypes.STARTER; // renvoyer le type STARTER de l'énumération
-		} else if(lines[1].equalsIgnoreCase(DongeonSignTypes.STOPPER.systemKey())) { // s'il s'agit d'un panneau d'arrêt alors (note du dev : non-utilisé pour l'instant)
-			return DongeonSignTypes.STOPPER; // renvoyer le type STOPPER de l'énumération
 		}
 		return null; // Si aucune des conditions n'est remplie, on renvoie rien.
 	}
@@ -196,8 +201,16 @@ public class InteractListener implements Listener {
 	 * @param players -> Groupe de joueurs voulant essayer le donjon
 	 */
 	public void teleportPlayersFromClickedSign(Sign sign, Player clicker, Collection<Player> players) {
-		Directional directional = (Directional) sign; // On récupère le panneau en tant que block directionnel
-		BlockFace facing = directional.getFacing(); // On récupère l'orientation du panneau en question
+		
+		BlockData blockData = sign.getBlock().getBlockData();
+		
+		BlockFace facing = BlockFace.UP;
+		
+		if(blockData instanceof WallSign) {
+			facing = ((Directional)blockData).getFacing();
+		} else if(blockData instanceof Sign) {
+			facing = ((Rotatable)blockData).getRotation();
+		} else return;
 		
 		if(this.interactableSignTypes.contains(sign.getType())) { // Si le panneau est bien un panneau avec lequel un joueur peut intéragir alors
 			Location nextLocation = clicker.getLocation(); // On récupère la location du joueur ayant cliqué.
@@ -247,8 +260,7 @@ public class InteractListener implements Listener {
 
 enum DongeonSignTypes {
 	
-	STARTER("STATE.START"), // Panneau de lancement
-	STOPPER("STATE.STOP"); // Panneau d'arrêt (Note du dev : non-utilisé pour l'instant)
+	STARTER("STATE.START"); // Panneau de lancement
 	
 	private String systemKey; // Variable de stockage de la clé système
 	

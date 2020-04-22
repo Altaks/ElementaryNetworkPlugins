@@ -1,5 +1,10 @@
 name: EODungeons
-version: 1.1
+version: 1.4.3
 author: Altaks
 main: fr.altaks.eodungeons.Main
-api-version: 1.15.2
+api-version: 1.15
+commands: 
+  stopdungeon: 
+    description: "Allow admins or \"dungeon.stop.use\" permissed players to stop active dungeons with command orders"
+    permission: dongeon.stop.use
+    usage: "/stopdungeon <active-dungeon-name>"

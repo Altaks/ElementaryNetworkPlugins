@@ -2,7 +2,6 @@ package fr.altaks.eodungeons.util;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.List;
 
 import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
@@ -28,8 +27,8 @@ public class LootsUtil {
 	 * @return DungeonLoots
 	 */
 	public static DungeonLoots getDungeonLoots(Main main, File winLoots, File looseLoots) {
-		List<ItemStack> win_items = getItems(winLoots);
-		List<ItemStack> fail_items = getItems(looseLoots);
+		ArrayList<ItemStack> win_items = getItems(winLoots);
+		ArrayList<ItemStack> fail_items = getItems(looseLoots);
 		return new DungeonLoots(main, win_items, fail_items);
 	}
 	
@@ -38,8 +37,8 @@ public class LootsUtil {
 	 * @param file -> Fichier qui renferme tous les items
 	 * @return List<ItemStack> qui contient tous les items inscrits dans le fichier
 	 */
-	private static List<ItemStack> getItems(File file){
-		List<ItemStack> items = new ArrayList<ItemStack>();
+	private static ArrayList<ItemStack> getItems(File file){
+		ArrayList<ItemStack> items = new ArrayList<ItemStack>();
 		FileConfiguration yml = YamlConfiguration.loadConfiguration(file);
 		for(String item : yml.getKeys(false)) {
 			items.add(getItem(yml.getConfigurationSection(item)));
@@ -54,17 +53,29 @@ public class LootsUtil {
 	 */
 	private static ItemStack getItem(ConfigurationSection section) {
 		String itemNameSpacedKey = section.getString("item-name");
+		String compoundString = section.getString("nbt-tag");
 		int stackAmount = section.getInt("amount");
-		NBTTagCompound compound = new NBTTagCompound().getCompound(section.getString("nbt-tag"));
+		
+		boolean nbtTagNotNull = false;
+		NBTTagCompound compound = new NBTTagCompound();
+		if(!(compoundString.equalsIgnoreCase("{}") || compoundString.equalsIgnoreCase(""))) {
+			compound = new NBTTagCompound().getCompound(compoundString);
+			compound.setString("id", itemNameSpacedKey);
+			compound.setInt("amount", stackAmount);
+			nbtTagNotNull = true;
+		}
+		
 		Material material = Material.getMaterial(itemNameSpacedKey.split(":")[1]);
 		
 		ItemStack itemBase = new ItemStack(material, stackAmount);
-		
-		net.minecraft.server.v1_15_R1.ItemStack nmsItem = CraftItemStack.asNMSCopy(itemBase);
-		nmsItem.setTag(compound);
-		
-		ItemStack finalItem = CraftItemStack.asBukkitCopy(nmsItem);
-		return finalItem;
+		if(nbtTagNotNull) {
+			net.minecraft.server.v1_15_R1.ItemStack nmsItem = CraftItemStack.asNMSCopy(itemBase);
+			nmsItem.setTag(compound);
+			
+			ItemStack finalItem = CraftItemStack.asBukkitCopy(nmsItem);
+			return finalItem;
+		}
+		return itemBase;
 	}
 
 }
