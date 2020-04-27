@@ -65,7 +65,14 @@ public class LootsUtil {
 			nbtTagNotNull = true;
 		}
 		
-		Material material = Material.getMaterial(itemNameSpacedKey.split(":")[1]);
+		Material material = Material.RED_NETHER_BRICKS;
+		
+		for(Material m : Material.values()) {
+			if(m.getKey().toString().equalsIgnoreCase(itemNameSpacedKey)) {
+				material = m;
+				break;
+			}
+		}
 		
 		ItemStack itemBase = new ItemStack(material, stackAmount);
 		if(nbtTagNotNull) {

@@ -4,8 +4,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
-import java.util.StringJoiner;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -34,6 +32,7 @@ public class Wave {
 	 * Liste des mobs contenus dans la vague
 	 */
 	public List<WaveMob> waveMobs = new ArrayList<Wave.WaveMob>();
+	private boolean isLaunched = false;
 	
 	/**
 	 * Constructeur qui va initialiser tous les mobs de l'ArrayList, permet de stocker les vagues
@@ -44,11 +43,19 @@ public class Wave {
 		this.waveMobs = mobs; // Pour chaque mob de la liste, l'ajouter à la liste de "this" et non celle du constructeur
 	}
 	
+	/*
+	 * Permet de savoir si la vague est lancée
+	 */
+	public boolean isLaunched() {
+		return this.isLaunched;
+	}
+	
 	/**
 	 * Fonction qui permet de lancer la vague.
 	 */
 	public void start() {
 		this.getMobs().forEach(mob -> mob.summon()); // Pour chaque mob de la vague, le faire spawner
+		this.isLaunched = true;
 	}
 	
 	/**
@@ -62,47 +69,45 @@ public class Wave {
 	 */
 	@SuppressWarnings("deprecation")
 	public static Wave loadWaveFromYmlFile(Dongeon dungeon, Main main, File file) throws NullPointerException, IOException {
+		
 		if(!file.exists()) return null; // Si le fichier n'existe pas, provoquer une NullPointerException
 		if(Main.isDebugging) dungeon.getActivePlayers().forEach(p -> p.sendMessage("§c\u00BB Liste \"" + file.getName() + "\" en cours de load"));
 		FileConfiguration yml = YamlConfiguration.loadConfiguration(file); // On charge le fichier en tant que FileConfiguration
-				
+		if(Main.isDebugging) dungeon.getActivePlayers().forEach(p -> p.sendMessage("§c\u00BB Fichier yaml " + yml.getName() + " chargé"));
 		List<WaveMob> mobs = new ArrayList<Wave.WaveMob>(); // On créé une liste de mobs vide qui sera celle de la vague.
 		
-		Set<String> entitiespath = yml.getConfigurationSection("entities").getKeys(false); // On récupère les "chemins d'accès" à chaque entité écrite
-		for(String entity : entitiespath) { // Pour chaque entité
+		for(String entity : yml.getConfigurationSection("entities").getKeys(false)) { // Pour chaque entité
 			
 			// Obtenir la liste des endroits de spawn du mob
 			List<Location> spawnLocations = new ArrayList<Location>();
-			for(String location : yml.getStringList(entity + ".spawn-coordinates")) {
-				spawnLocations.add(getLocationFromYmlString(location));
+			for(String location : yml.getConfigurationSection("entities." + entity + ".spawn-coordinates").getKeys(false)) {
+				spawnLocations.add(getLocationFromYmlString(yml.getString("entities." + entity + ".spawn-coordinates."+ location)));
 			}
-			
 			
 			if(Main.isDebugging) {
-				StringJoiner builder = new StringJoiner("\n");
-				spawnLocations.forEach(loc -> builder.add("> x: " + loc.getBlockX() + "/y:" + loc.getBlockY() + "/z:" + loc.getBlockZ()));
-				dungeon.getActivePlayers().forEach(p -> p.sendMessage("§e\u00BB Mob en cours de load spawnera à : \n" + builder.toString()));
+				StringBuilder builder = new StringBuilder();
+				spawnLocations.forEach(loc -> builder.append("\n> x: " + loc.getBlockX() + "/y:" + loc.getBlockY() + "/z:" + loc.getBlockZ()));
+				dungeon.getActivePlayers().forEach(p -> p.sendMessage("§e\u00BB Mob en cours de load spawnera à : " + builder.toString()));
 			}
-			
 			
 			// Obtenir le type d'entité depuis MC
 			EntityType baseEntityType = EntityType.FOX;
-			String baseEntityTypeKey = yml.getString(entity + ".entity-type");
+			String baseEntityTypeKey = yml.getString("entities." + entity + ".entity-type");
 			baseEntityType = EntityType.fromName(baseEntityTypeKey.split(":")[1]);
 			if(Main.isDebugging) dungeon.getActivePlayers().forEach(p -> p.sendMessage("§e\u00BB Mob en cours de load sera : " + baseEntityTypeKey));
 			
 			// Obtenir le type de mob : Est ce un mob, boss ou worldboss ?
 			DungeonMobType mobType = DungeonMobType.MOB;
-			String mobTypeKey = yml.getString(entity + ".dongeon-mob-type");
+			String mobTypeKey = yml.getString("entities." + entity + ".dongeon-mob-type");
 			mobType = DungeonMobType.getByConfigKey(mobTypeKey);
 			if(Main.isDebugging) dungeon.getActivePlayers().forEach(p -> p.sendMessage("§c\u00BB Mob en cours de load sera un mob de donjon : " + mobTypeKey));
 			
 			// Obtenir la vie de l'entité
-			double health = yml.getDouble(entity + ".health");
+			double health = yml.getDouble("entities." + entity + ".health");
 			if(Main.isDebugging) dungeon.getActivePlayers().forEach(p -> p.sendMessage("§c\u00BB Mob en cours de load aura " + health + "pv"));
 			
 			// Obtenir le NBTTag qui sera appliqué à l'entité
-			String nbtTag = yml.getString(entity + ".nbt-tag");
+			String nbtTag = yml.getString("entities." + entity + ".nbt-tag");
 			NBTTagCompound compound = new NBTTagCompound().getCompound(nbtTag);
 			if(Main.isDebugging) dungeon.getActivePlayers().forEach(p -> p.sendMessage("§c\u00BB Mob en cours de load aura le tag : " + nbtTag));
 			
@@ -112,29 +117,29 @@ public class Wave {
 			
 					// Obtenir le casque :
 			
-					ItemStack helmet = itemReader(yml.getConfigurationSection(entity + ".inventory.armor.helmet"));
+					ItemStack helmet = itemReader(yml.getConfigurationSection("entities." + entity + ".inventory.armor.helmet"));
 			
 					// Obtenir le plastron :
 					
-					ItemStack chestplate = itemReader(yml.getConfigurationSection(entity + ".inventory.armor.chestplate"));
+					ItemStack chestplate = itemReader(yml.getConfigurationSection("entities." + entity + ".inventory.armor.chestplate"));
 					
 					// Obtenir les jambières :
 					
-					ItemStack leggings = itemReader(yml.getConfigurationSection(entity + ".inventory.armor.leggings"));
+					ItemStack leggings = itemReader(yml.getConfigurationSection("entities." + entity + ".inventory.armor.leggings"));
 					
 					// Obtenir les bottes :
 					
-					ItemStack boots = itemReader(yml.getConfigurationSection(entity + ".inventory.armor.boots"));
+					ItemStack boots = itemReader(yml.getConfigurationSection("entities." + entity + ".inventory.armor.boots"));
 				
 				// Obtenir le contenu des mains :
 					
 					// Obtenir la main principale : 
 					
-					ItemStack mainhand = itemReader(yml.getConfigurationSection(entity + ".inventory.hands.main-hand"));
+					ItemStack mainhand = itemReader(yml.getConfigurationSection("entities." + entity + ".inventory.hands.main-hand"));
 					
 					// Obtenir la main secondaire : 
 					
-					ItemStack offhand = itemReader(yml.getConfigurationSection(entity + ".inventory.hands.off-hand"));
+					ItemStack offhand = itemReader(yml.getConfigurationSection("entities." + entity + ".inventory.hands.off-hand"));
 				
 			// On stocke l'inventaire dans une classe MobInventory
 			MobInventory inventory = new MobInventory(helmet, chestplate, leggings, boots, mainhand, offhand);
@@ -153,7 +158,8 @@ public class Wave {
 	
 	// Permet de lire une Location depuis un strinc suivant le pattern [world/x/y/z/pitch/yaw]
 	private static Location getLocationFromYmlString(String str) {
-		str.replace("]", ""); str.replace("[", ""); // On retire "[" et "]" du String
+		str = str.replace("[", "").replace("]",""); // On retire "[" et "]" du String
+		
 		String[] coords = str.split("/"); // On sépare les données en tableau via les "/"
 		String worldname = coords[0]; // On stocke le nom du monde
 		String strX = coords[1], strY = coords[2], strZ = coords[3]; // On stocke les coordonées
@@ -385,7 +391,14 @@ public class Wave {
 			nbtTagNotNull = true;
 		}
 		
-		Material material = Material.getMaterial(itemNameSpacedKey.split(":")[1]);
+		Material material = Material.RED_NETHER_BRICKS;
+		
+		for(Material m : Material.values()) {
+			if(m.getKey().toString().equalsIgnoreCase(itemNameSpacedKey)) {
+				material = m;
+				break;
+			}
+		}
 		
 		ItemStack itemBase = new ItemStack(material, stackAmount);
 		if(nbtTagNotNull) {

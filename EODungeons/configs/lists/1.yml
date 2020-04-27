@@ -1,7 +1,7 @@
 entities: # You can add any amount of entities
-  entity-1: 
+  entity-1:
     spawn-coordinates: # pitch & yaw are optional
-    - "[World_Dj_EO/-189/5/-26]" # Please use non-decimal numbers.
+      loc-1: "[World_Dj_EO/-189/5/-26]" # Please use non-decimal numbers.
     entity-type: minecraft:zombie
     # For dongeon-mob-type value, please choose between :
     # ENTITY.MOB for basic mobs
@@ -9,7 +9,7 @@ entities: # You can add any amount of entities
     # ENTITY.WORLDBOSS for worldbosses
     dongeon-mob-type: ENTITY.MOB
     health: 20.0 # Use . instead of , to use decimal-values
-    nbt-tag: "{}"# NBT-TAG Like /summon command tag
+    nbt-tag: "{}" # NBT-TAG Like /summon command tag
     inventory:
       armor: 
         helmet: 

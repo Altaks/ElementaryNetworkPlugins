@@ -97,19 +97,19 @@ public class Dongeon implements Listener {
 		main.getActiveDongeons().add(this); // On ajoute à la liste des donjons actifs ce donjon
 		main.getActiveDungeons().put(dungeonName, this); // On ajoute à la l'HashMap des donjons actifs le nom du donjon avec le donjoon
 		this.activePlayers.forEach(player -> main.getLinkedDongeon().put(player.getUniqueId(), this)); // Pour chaque joueur actif, on ajoute son UUID ainsi que ce donjon, à la HashMap des joueurs dans des donjons
-				
 		
 		if(Main.isDebugging) this.activePlayers.forEach(p -> p.sendMessage("§c\u00BB Chargement des listes de mobs..."));
 		Sign[] systemSigns = area.getSystemSignsFromArea(); // On récupère les panneaux de la zone du donjon, sous forme de tableau déja trié
-		if(Main.isDebugging) this.activePlayers.forEach(p -> p.sendMessage("§e\u00BB Zone du donjon : \n "
+		if(Main.isDebugging) this.activePlayers.forEach(p -> p.sendMessage("§e\u00BB Zone du donjon : \n"
 				+ "POS_1 > x:" + area.getMinLoc().getBlockX() + "/y:" + area.getMinLoc().getBlockY() + "/z:" + area.getMinLoc().getBlockZ() + "\n"
 				+ "POS_2 > x:" + area.getMaxLoc().getBlockX() + "/y:" + area.getMaxLoc().getBlockY() + "/z:" + area.getMaxLoc().getBlockZ()));
 		for(Sign sign : systemSigns) { // pour chaque panneau du tableau
 			try {
-				File file = new File(main.getWaveDirectory() + sign.getLines()[1].split(":")[1].toString() + ".yml");
+				File file = new File(main.getWaveDirectory() + File.separator + sign.getLines()[1].split(":")[1].toString() + ".yml");
 				if(!file.exists() && Main.isDebugging) getActivePlayers().forEach(p -> p.sendMessage("§e\u00BB Fichier de la liste " + file.getName() + " inexistante"));
 				// on ajoute à la HashMap l'emplacement du panneau avec la vague (importée depuis un fichier)
 				waveActivationLocations.put(sign.getLocation(), Wave.loadWaveFromYmlFile(this, main, file));
+				if(Main.isDebugging) this.activePlayers.forEach(p -> p.sendMessage("§c\u00BB Liste " + sign.getLine(0).split(":")[1] + " chargée"));
 			} catch (NullPointerException e) {
 				// Si une NullPointerException se produit, alors on prévient la console via le Logger de Bukkit, puis on écrit l'erreur dans la console
 				Bukkit.getLogger().warning("LISTE \""+sign.getLines()[1].split(":")[1]+"\" NON TROUVEE");
@@ -119,14 +119,13 @@ public class Dongeon implements Listener {
 				Bukkit.getLogger().warning("LISTE \""+sign.getLines()[1].split(":")[1]+"\" NON TROUVEE");
 				e.printStackTrace();
 			}
-			if(Main.isDebugging) this.activePlayers.forEach(p -> p.sendMessage("§c\u00BB Liste " + sign.getLine(0).split(":")[1] + " chargée"));
 		}
 		if(Main.isDebugging) this.activePlayers.forEach(p -> p.sendMessage("§c\u00BB Listes chargées"));
 		
 		if(Main.isDebugging) this.activePlayers.forEach(p -> p.sendMessage("§c\u00BB Chargement des loots..."));
 		// On récupère les fichiers des listes de loots
-		File winLoots = new File(main.getLootsDirectory() + dungeonName + "_win.yml");
-		File failLoots = new File(main.getLootsDirectory() + dungeonName + "_loose.yml");
+		File winLoots = new File(main.getLootsDirectory() + File.separator + dungeonName + "_win.yml");
+		File failLoots = new File(main.getLootsDirectory() + File.separator + dungeonName + "_loose.yml");
 		
 		// On affecte les Loots du donjon avec les loots lus sur les deux fichiers
 		this.loots = LootsUtil.getDungeonLoots(main, winLoots, failLoots);
@@ -159,7 +158,7 @@ public class Dongeon implements Listener {
 					if(getActivePlayers().isEmpty()) {
 						stop_loosing(false);
 						cancel();
-					} else if((!waveIterator.hasNext()) && (!getArea().isAliveNonPlayerEntityInWholeArea())){
+					} else if((!waveIterator.hasNext()) && (!getArea().isAliveNonPlayerEntityInWholeArea()) && currentWave.getValue().isLaunched()){
 						if(Main.isDebugging) getActivePlayers().forEach(p -> p.sendMessage("§c\u00BB Les joueurs ont gagné !"));
 						stop_winning();
 						cancel();
