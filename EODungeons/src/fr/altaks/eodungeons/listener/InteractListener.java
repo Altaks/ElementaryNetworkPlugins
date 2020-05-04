@@ -74,6 +74,7 @@ public class InteractListener implements Listener {
 				}
 			} catch (NullPointerException e) {
 				event.getPlayer().sendMessage("Erreur de type NullPointerException : " + e.getMessage());
+				e.printStackTrace();
 				return;
 			}
 		}
@@ -185,11 +186,13 @@ public class InteractListener implements Listener {
 			return; // Arrêter la lecture de la fonction ici
 		}
 		
+		Location startingLocation = player.getLocation();
+		
 		// Téléporter les joueurs dans le donjon, à 10 blocks devant eux avec la direction dans laquelle ils regardaient
 		teleportPlayersFromClickedSign(sign, player, players);
 		
-		DongeonArea area = new DongeonArea(minLoc, maxLoc); // On récupère la zone du donjon
-		Dongeon newInstance = new Dongeon(main, player.getLocation(), dungeonName, area, players); // On génère une nouvelle instance du donjon
+		DongeonArea area = new DongeonArea(main, minLoc, maxLoc); // On récupère la zone du donjon
+		Dongeon newInstance = new Dongeon(main, startingLocation, dungeonName, area, players); // On génère une nouvelle instance du donjon
 		main.getServer().getPluginManager().registerEvents(newInstance, main); // On enregistre cette instance comme Listener indépendant
 		newInstance.start(); // On lance le donjon via la fonction de la classe dungeon
 	}

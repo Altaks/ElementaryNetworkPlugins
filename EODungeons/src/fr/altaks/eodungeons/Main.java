@@ -36,7 +36,7 @@ public class Main extends JavaPlugin { // Il s'agit d'une classe Main qui hérite
 	// Dossiers des listes de mobs, listes de loots, et fichier de sauvegarde des endroits de déconnection
 	private File waveDirectory, lootsDirectory, disconnectionLocsFile;
 	
-	public static boolean isDebugging = true;
+	public static boolean isDebugging = false;
 	
 	@Override
 	public void onEnable() { // Voici la fonction qui se lance à chaque démarrage / reload d'un serveur
@@ -62,6 +62,10 @@ public class Main extends JavaPlugin { // Il s'agit d'une classe Main qui hérite
 			}
 		}
 		
+		// Affectation du mode de débug
+		saveDefaultConfig();
+		if(getConfig().isSet("debug-mode")) isDebugging = getConfig().getBoolean("debug-mode");
+		
 		/*
 		 * Enregistrement sur le serveur en tant que Listeners les classes InteractListener, PlayerAttackMobListener et ConnectionListener
 		 */
@@ -74,6 +78,7 @@ public class Main extends JavaPlugin { // Il s'agit d'une classe Main qui hérite
 		 */
 		getCommand("stopdungeon").setExecutor(new StopDungeonCommand(this));
 		getCommand("stopdungeon").setTabCompleter(new StopDungeonCommand(this));
+		
 	}
 	
 	/*

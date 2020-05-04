@@ -1,7 +1,6 @@
 entities: # You can add any amount of entities
   entity-1:
-    spawn-coordinates: # pitch & yaw are optional
-      loc-1: "[World_Dj_EO/-189/5/-26]" # Please use non-decimal numbers.
+    spawn-times: 1
     entity-type: minecraft:zombie
     # For dongeon-mob-type value, please choose between :
     # ENTITY.MOB for basic mobs

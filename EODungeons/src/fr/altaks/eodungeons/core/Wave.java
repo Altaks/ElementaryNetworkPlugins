@@ -5,10 +5,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
-import org.bukkit.World;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -20,7 +18,6 @@ import org.bukkit.inventory.EntityEquipment;
 import org.bukkit.inventory.ItemStack;
 
 import fr.altaks.eodungeons.Main;
-import net.minecraft.server.v1_15_R1.Entity;
 import net.minecraft.server.v1_15_R1.NBTTagCompound;
 
 /**
@@ -32,7 +29,6 @@ public class Wave {
 	 * Liste des mobs contenus dans la vague
 	 */
 	public List<WaveMob> waveMobs = new ArrayList<Wave.WaveMob>();
-	private boolean isLaunched = false;
 	
 	/**
 	 * Constructeur qui va initialiser tous les mobs de l'ArrayList, permet de stocker les vagues
@@ -43,19 +39,11 @@ public class Wave {
 		this.waveMobs = mobs; // Pour chaque mob de la liste, l'ajouter à la liste de "this" et non celle du constructeur
 	}
 	
-	/*
-	 * Permet de savoir si la vague est lancée
-	 */
-	public boolean isLaunched() {
-		return this.isLaunched;
-	}
-	
 	/**
 	 * Fonction qui permet de lancer la vague.
 	 */
-	public void start() {
-		this.getMobs().forEach(mob -> mob.summon()); // Pour chaque mob de la vague, le faire spawner
-		this.isLaunched = true;
+	public void start(Location signLocation) {
+		this.getMobs().forEach(mob -> mob.summon(signLocation)); // Pour chaque mob de la vague, le faire spawner
 	}
 	
 	/**
@@ -78,18 +66,10 @@ public class Wave {
 		
 		for(String entity : yml.getConfigurationSection("entities").getKeys(false)) { // Pour chaque entité
 			
-			// Obtenir la liste des endroits de spawn du mob
-			List<Location> spawnLocations = new ArrayList<Location>();
-			for(String location : yml.getConfigurationSection("entities." + entity + ".spawn-coordinates").getKeys(false)) {
-				spawnLocations.add(getLocationFromYmlString(yml.getString("entities." + entity + ".spawn-coordinates."+ location)));
-			}
+			int spawnTimes = yml.getInt("entities." + entity + ".spawn-times");
 			
-			if(Main.isDebugging) {
-				StringBuilder builder = new StringBuilder();
-				spawnLocations.forEach(loc -> builder.append("\n> x: " + loc.getBlockX() + "/y:" + loc.getBlockY() + "/z:" + loc.getBlockZ()));
-				dungeon.getActivePlayers().forEach(p -> p.sendMessage("§e\u00BB Mob en cours de load spawnera à : " + builder.toString()));
-			}
-			
+			if(Main.isDebugging) dungeon.getActivePlayers().forEach(p -> p.sendMessage("§e\u00BB Mob en cours de load spawnera " + spawnTimes + " fois"));
+
 			// Obtenir le type d'entité depuis MC
 			EntityType baseEntityType = EntityType.FOX;
 			String baseEntityTypeKey = yml.getString("entities." + entity + ".entity-type");
@@ -145,7 +125,7 @@ public class Wave {
 			MobInventory inventory = new MobInventory(helmet, chestplate, leggings, boots, mainhand, offhand);
 			
 			// On ajoute le mob lu dans la liste de la vague
-			mobs.add(new WaveMob(dungeon, main, spawnLocations, baseEntityType, mobType, health, inventory, compound));
+			mobs.add(new WaveMob(dungeon, main, spawnTimes, baseEntityType, mobType, health, inventory, compound));
 		}
 		// On renvoie la vague
 		return new Wave(mobs);
@@ -156,30 +136,13 @@ public class Wave {
 		return this.waveMobs;
 	}
 	
-	// Permet de lire une Location depuis un strinc suivant le pattern [world/x/y/z/pitch/yaw]
-	private static Location getLocationFromYmlString(String str) {
-		str = str.replace("[", "").replace("]",""); // On retire "[" et "]" du String
-		
-		String[] coords = str.split("/"); // On sépare les données en tableau via les "/"
-		String worldname = coords[0]; // On stocke le nom du monde
-		String strX = coords[1], strY = coords[2], strZ = coords[3]; // On stocke les coordonées
-		World world = Bukkit.getWorld(worldname); // On récupère le monde
-		double x = Double.parseDouble(strX), y = Double.parseDouble(strY), z = Double.parseDouble(strZ); // On convertit les coords
-		if(coords.length > 4) { // Si le tableau possède plus de 4 entrées soit plus que world, x, y et z, alors :
-			String strPitch = coords[4], strYaw = coords[5]; // On récupère pitch et yaw en String
-			float pitch = Float.parseFloat(strPitch), yaw = Float.parseFloat(strYaw); // On convertit les angles en float
-			return new Location(world, x, y, z, yaw, pitch); // On renvoie la Location lue
-		}
-		return new Location(world, x, y, z); // On renvoie la Location lue
-	}
-	
 	/**
 	 * Classe intégrée dans Wave, permet de facilement gérér/créer un mob de donjon
 	 * @author Altaks
 	 */
 	private static class WaveMob {
 		
-		private List<Location> spawnLocations; // Liste des endroits ou va spawn le mob
+		private int spawnTimes; // Liste des endroits ou va spawn le mob
 		private EntityType basicEntityType; // Type d'entité vanilla (entité directe de MC)
 		private DungeonMobType mobEntityType; // Type de mob de donjon (mob, miniboss ou worldboss)
 		private double health = 1d; // Vie du mob, mise par défaut à 0.5 coeurs
@@ -199,8 +162,8 @@ public class Wave {
 		 * @param inventory -> Inventaire du mob
 		 * @param nbtTag -> NBTTag qui va être appliqué au mob
 		 */
-		public WaveMob(Dongeon dungeon, Main main, List<Location> spawnLocations, EntityType basicEntityType, DungeonMobType mobEntityType, double health, MobInventory inventory, NBTTagCompound nbtTag) {
-			this.spawnLocations = spawnLocations;
+		public WaveMob(Dongeon dungeon, Main main, int spawnTimes, EntityType basicEntityType, DungeonMobType mobEntityType, double health, MobInventory inventory, NBTTagCompound nbtTag) {
+			this.spawnTimes = spawnTimes;
 			
 			this.basicEntityType = basicEntityType;
 			this.mobEntityType = mobEntityType;
@@ -222,18 +185,23 @@ public class Wave {
 		 * Méthode qui va faire apparaître le mob à chaque de ses positions d'apparition.
 		 */
 		@SuppressWarnings("deprecation")
-		public void summon() {
+		public void summon(Location signLocation) {
 			if(Main.isDebugging) getDungeon().getActivePlayers().forEach(p -> p.sendMessage("§c\u00BB Mob en cours de spawn"));
 			
-			this.spawnLocations.forEach(location -> { // Pour chacune des positions d'apparition
-								
-				org.bukkit.entity.Entity entity = location.getWorld().spawn(location, basicEntityType.getEntityClass());
+			signLocation = signLocation.add(0, 2, 0);
+			
+			for(int i = 0; i < this.spawnTimes; i++) {
+				org.bukkit.entity.Entity entity = signLocation.getWorld().spawn(signLocation, basicEntityType.getEntityClass());
 				
-				if(Main.isDebugging) getDungeon().getActivePlayers().forEach(p -> p.sendMessage("§c\u00BB Entité de type " + basicEntityType.getKey().toString() +" spawnée aux coordoonées x:" + location.getBlockX() + "/y:"+location.getBlockY()+"/z:"+location.getBlockZ()));
+				if(Main.isDebugging) getDungeon().getActivePlayers().forEach(p -> p.sendMessage("§c\u00BB Entité de type " + basicEntityType.getKey().toString() + " spawnée"));
 				
 				if((entity instanceof LivingEntity)) { // Si l'entité est une entité vivante et que ce n'est pas un joueur :
 					
 					if(Main.isDebugging) getDungeon().getActivePlayers().forEach(p -> p.sendMessage("§c\u00BB Entité de type vivante"));
+					
+					((CraftEntity)entity).getHandle().d(nbtTag); // On récupère l'entité en NMS et on applique le tag
+					
+					if(Main.isDebugging) getDungeon().getActivePlayers().forEach(p -> p.sendMessage("§c\u00BB NBTTag appliqué à l'entité"));
 					
 					LivingEntity livingEntity = (LivingEntity) entity; // on récupère l'entité en tant qu'entité vivante (LivingEntity)
 					
@@ -265,12 +233,6 @@ public class Wave {
 					equipement.setItemInOffHandDropChance(0f);
 					
 					if(Main.isDebugging) getDungeon().getActivePlayers().forEach(p -> p.sendMessage("§c\u00BB Equipement appliqué à l'entité"));
-
-					Entity nmsEntity = ((CraftEntity)entity).getHandle(); // On récupère l'entité en NMS
-					
-					nmsEntity.d(nbtTag); // On place le NBTTag sur l'entité (peut override certains trucs)
-					
-					if(Main.isDebugging) getDungeon().getActivePlayers().forEach(p -> p.sendMessage("§c\u00BB NBTTag appliqué à l'entité"));
 					
 					((LivingEntity) entity).setRemoveWhenFarAway(false); // On désactive le dispawn naturel de l'entité
 					
@@ -286,7 +248,8 @@ public class Wave {
 				} else {
 					if(Main.isDebugging) getDungeon().getActivePlayers().forEach(p -> p.sendMessage("§c\u00BB Entité non-vivante"));
 				}
-			});
+			}
+			
 		}
 		
 	}
