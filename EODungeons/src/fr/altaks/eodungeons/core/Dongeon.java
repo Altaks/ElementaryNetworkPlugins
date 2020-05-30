@@ -25,6 +25,7 @@ import org.bukkit.scheduler.BukkitTask;
 
 import fr.altaks.eodungeons.Main;
 import fr.altaks.eodungeons.util.LootsUtil;
+import fr.altaks.eodungeons.util.PostDecoLootsUtil;
 
 /**
  * @author Altaks
@@ -106,7 +107,7 @@ public class Dongeon implements Listener {
 		File failLoots = new File(main.getLootsDirectory() + File.separator + dungeonName + "_loose.yml");
 		
 		// On affecte les Loots du donjon avec les loots lus sur les deux fichiers
-		this.loots = LootsUtil.getDungeonLoots(main, winLoots, failLoots);
+		this.loots = LootsUtil.getDungeonLoots(main, winLoots, failLoots, activePlayers.size());
 		
 		if(Main.isDebugging) this.activePlayers.forEach(p -> p.sendMessage("§c\u00BB Loots chargés"));
 		
@@ -120,7 +121,7 @@ public class Dongeon implements Listener {
 				File file = new File(main.getWaveDirectory() + File.separator + sign.getLines()[1].split(":")[1].toString() + ".yml");
 				// on ajoute à la Queue l'emplacement du panneau avec la vague (importée depuis un fichier)
 				if(file.exists()) {
-					this.waveQueue.offer(new WaveArea(sign.getLocation(), Wave.loadWaveFromYmlFile(this, main, file)));
+					this.waveQueue.offer(new WaveArea(sign.getLocation(), Wave.loadWaveFromYmlFile(this, main, file, activePlayers.size())));
 					if(Main.isDebugging) this.activePlayers.forEach(p -> p.sendMessage("§c\u00BB Liste " + sign.getLine(0).split(":")[1] + " chargée"));
 				} else if(Main.isDebugging) this.activePlayers.forEach(p -> p.sendMessage("§e\u00BB Fichier de la liste " + file.getName() + " inexistante"));
 			
@@ -223,7 +224,9 @@ public class Dongeon implements Listener {
 				Bukkit.getPlayer(uuid).teleport(this.dongeonActivationLocation); // On téléporte le joueur à l'entrée du donjon
 				connectedPlayers.add(Bukkit.getPlayer(uuid)); // On ajoute ce joueur dans liste des joueurs encore connectés
 				main.getLinkedDongeon().remove(uuid); // On retire le joueur de la HashMap des joueurs liés aux donjons
-			} catch (NullPointerException e) { /*En cas de NullPointerException, ne rien faire*/ }
+			} catch (NullPointerException e) { 
+				PostDecoLootsUtil.writeNewItemToPlayerFile(uuid, loots.getWinLoots().toArray(new ItemStack[loots.getLooseLoots().size()]));
+			}
 		});
 		
 		openLootsInv(connectedPlayers, loots, GameStatus.Win); // On donne les loots de victoire aux joueurs encore connectés 
@@ -247,7 +250,9 @@ public class Dongeon implements Listener {
 				player.teleport(this.dongeonActivationLocation); // On téléporte le joueur à l'entrée du donjon
 				connectedPlayers.add(Bukkit.getPlayer(uuid)); // On ajoute ce joueur dans liste des joueurs encore connectés
 				main.getLinkedDongeon().remove(uuid); // On retire le joueur de la HashMap des joueurs liés aux donjons
-			} catch (NullPointerException e) { /*En cas de NullPointerException, ne rien faire*/ }
+			} catch (NullPointerException e) { 
+				PostDecoLootsUtil.writeNewItemToPlayerFile(uuid, loots.getLooseLoots().toArray(new ItemStack[loots.getLooseLoots().size()]));
+			}
 		});
 		
 		if(!forced) openLootsInv(connectedPlayers, loots, GameStatus.Loose); // On donne les loots de défaite aux joueurs encore connectés 

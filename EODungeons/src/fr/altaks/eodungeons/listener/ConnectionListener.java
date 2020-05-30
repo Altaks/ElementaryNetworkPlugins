@@ -44,8 +44,10 @@ public class ConnectionListener implements Listener {
 		
 		if(main.getLinkedDongeon().containsKey(player.getUniqueId())) { // Si le joueur est dans un donjon (lors de sa déconnexion donc) alors :
 			Dongeon dj = main.getLinkedDongeon().get(player.getUniqueId()); // On récupère le donjon dans lequel se trouve
+			dj.getActivePlayers().remove(player);
 			String str = getDisconnectionLocString(dj.getDungeonStartLocation()); // On récupère la position de départ du donjon sous forme de String suivant un pattern spécifique
 			yml.set(player.getUniqueId().toString(), str); // On charge le fichier qui contient les endroits de déconnexion
+			main.getLinkedDongeon().remove(player.getUniqueId());
 		} else { // Si le joueur n'est pas dans un donjon lors de sa deconnexion alors :
 			Location loc = player.getLocation(); // On récupère son endroit de déconnexion
 			String disconnectionString = getDisconnectionLocString(loc); // On récupère ses coordonnées de déconnection en un String suivant un pattern spécifique

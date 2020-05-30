@@ -5,8 +5,14 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.boss.BarColor;
+import org.bukkit.boss.BarFlag;
+import org.bukkit.boss.BarStyle;
+import org.bukkit.boss.BossBar;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -14,10 +20,15 @@ import org.bukkit.craftbukkit.v1_15_R1.entity.CraftEntity;
 import org.bukkit.craftbukkit.v1_15_R1.inventory.CraftItemStack;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.LivingEntity;
+import org.bukkit.entity.Player;
 import org.bukkit.inventory.EntityEquipment;
 import org.bukkit.inventory.ItemStack;
 
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
+
 import fr.altaks.eodungeons.Main;
+import net.minecraft.server.v1_15_R1.Entity;
+import net.minecraft.server.v1_15_R1.MojangsonParser;
 import net.minecraft.server.v1_15_R1.NBTTagCompound;
 
 /**
@@ -56,7 +67,7 @@ public class Wave {
 	 * @throws IOException -> Peut provoquer une IOException si le fichier est introuvable
 	 */
 	@SuppressWarnings("deprecation")
-	public static Wave loadWaveFromYmlFile(Dongeon dungeon, Main main, File file) throws NullPointerException, IOException {
+	public static Wave loadWaveFromYmlFile(Dongeon dungeon, Main main, File file, int groupSize) throws NullPointerException, IOException {
 		
 		if(!file.exists()) return null; // Si le fichier n'existe pas, provoquer une NullPointerException
 		if(Main.isDebugging) dungeon.getActivePlayers().forEach(p -> p.sendMessage("§c\u00BB Liste \"" + file.getName() + "\" en cours de load"));
@@ -66,10 +77,16 @@ public class Wave {
 		
 		for(String entity : yml.getConfigurationSection("entities").getKeys(false)) { // Pour chaque entité
 			
-			int spawnTimes = yml.getInt("entities." + entity + ".spawn-times");
+			int spawnTimes = 1;
 			
-			if(Main.isDebugging) dungeon.getActivePlayers().forEach(p -> p.sendMessage("§e\u00BB Mob en cours de load spawnera " + spawnTimes + " fois"));
-
+			if(yml.get("entities." + entity + ".spawn-times") instanceof Integer) {
+				spawnTimes = yml.getInt("entities." + entity + ".spawn-times");
+			} else if(yml.get("entities." + entity + ".spawn-times") instanceof String){
+				spawnTimes = getNumberOfMobsToSpawn(yml.getString("entities." + entity + ".spawn-times"), groupSize);
+			}
+			
+			for(Player player : dungeon.getActivePlayers()) player.sendMessage("§e\u00BB Mob en cours sera spawné " + spawnTimes + " fois");
+			
 			// Obtenir le type d'entité depuis MC
 			EntityType baseEntityType = EntityType.FOX;
 			String baseEntityTypeKey = yml.getString("entities." + entity + ".entity-type");
@@ -86,10 +103,20 @@ public class Wave {
 			double health = yml.getDouble("entities." + entity + ".health");
 			if(Main.isDebugging) dungeon.getActivePlayers().forEach(p -> p.sendMessage("§c\u00BB Mob en cours de load aura " + health + "pv"));
 			
-			// Obtenir le NBTTag qui sera appliqué à l'entité
-			String nbtTag = yml.getString("entities." + entity + ".nbt-tag");
-			NBTTagCompound compound = new NBTTagCompound().getCompound(nbtTag);
-			if(Main.isDebugging) dungeon.getActivePlayers().forEach(p -> p.sendMessage("§c\u00BB Mob en cours de load aura le tag : " + nbtTag));
+			NBTTagCompound compound = new NBTTagCompound();
+			
+			if(!(yml.getString("entities." + entity + ".nbt-tag").equalsIgnoreCase("") || yml.getString("entities." + entity + ".nbt-tag").equalsIgnoreCase("{}"))) {
+				// Obtenir le NBTTag qui sera appliqué à l'entité
+				String nbtTag = yml.getString("entities." + entity + ".nbt-tag");
+				try {
+					compound = MojangsonParser.parse(nbtTag);
+				} catch (CommandSyntaxException e) {
+					e.printStackTrace();
+					if(Main.isDebugging) dungeon.getActivePlayers().forEach(p -> p.sendMessage("§c\u00BB JSONTag invalide pour l'entité : " + entity + " dans le fichier yml : " + file.getName()));
+					continue;
+				}
+				if(Main.isDebugging) dungeon.getActivePlayers().forEach(p -> p.sendMessage("§c\u00BB Mob en cours de load aura le tag : " + nbtTag));
+			}	
 			
 			// Obtenir l'inventaire :
 			
@@ -136,6 +163,10 @@ public class Wave {
 		return this.waveMobs;
 	}
 	
+	private static int getNumberOfMobsToSpawn(String spawnTimesString, int groupSize) {
+		return Integer.parseInt(spawnTimesString.replace("[", "").replace("]", "").split("/")[groupSize - 1]);
+	}
+	
 	/**
 	 * Classe intégrée dans Wave, permet de facilement gérér/créer un mob de donjon
 	 * @author Altaks
@@ -168,6 +199,8 @@ public class Wave {
 			this.basicEntityType = basicEntityType;
 			this.mobEntityType = mobEntityType;
 			
+			this.health = health;
+			
 			this.inventory = inventory;
 			
 			nbtTag.setString("id", basicEntityType.getKey().toString());
@@ -199,7 +232,12 @@ public class Wave {
 					
 					if(Main.isDebugging) getDungeon().getActivePlayers().forEach(p -> p.sendMessage("§c\u00BB Entité de type vivante"));
 					
-					((CraftEntity)entity).getHandle().d(nbtTag); // On récupère l'entité en NMS et on applique le tag
+					Entity e = ((CraftEntity)entity).getHandle();
+					
+					e.c(nbtTag);
+					
+					e.f(nbtTag);
+					((CraftEntity)entity).setHandle(e);
 					
 					if(Main.isDebugging) getDungeon().getActivePlayers().forEach(p -> p.sendMessage("§c\u00BB NBTTag appliqué à l'entité"));
 					
@@ -239,10 +277,19 @@ public class Wave {
 					if(Main.isDebugging) getDungeon().getActivePlayers().forEach(p -> p.sendMessage("§c\u00BB Dispawn naturel désactivé"));
 					
 					main.getActiveEntityIDs().add(entity.getUniqueId()); // On rajoute dans le main cette entité en tant qu'entité spawnée par un donjon
-					if(this.mobEntityType.equals(DungeonMobType.BOSS) || this.mobEntityType.equals(DungeonMobType.WORLDBOSS)) { // Si ce mob est un boss/worldboss alors :
-						main.getSpawnedBossesIDs().put(entity.getUniqueId(), this.dongeon); // On place cette entité en liason avec le donjon dans la HashMap des boss spawnées par des donjons
-					}
 					
+					if(!(mobEntityType.equals(DungeonMobType.MOB))) {
+						BossBar bar = Bukkit.createBossBar(((mobEntityType.equals(DungeonMobType.BOSS)) ? ChatColor.GOLD + "" + ChatColor.BOLD + "Boss" : ChatColor.RED + "" + ChatColor.BOLD + "World-Boss"), ((mobEntityType.equals(DungeonMobType.BOSS)) ? BarColor.YELLOW : BarColor.RED), ((mobEntityType.equals(DungeonMobType.BOSS)) ? BarStyle.SOLID : BarStyle.SEGMENTED_20), BarFlag.DARKEN_SKY);
+						
+						bar.setProgress(1);
+						getDungeon().getActivePlayers().forEach(p -> {
+							bar.addPlayer(p);
+						});
+						bar.setVisible(true);
+						main.getActiveBossBars().put(entity.getUniqueId(), bar);
+						return;
+					}
+						
 					if(Main.isDebugging) getDungeon().getActivePlayers().forEach(p -> p.sendMessage("§c\u00BB Entité complétée"));
 
 				} else {
@@ -348,13 +395,17 @@ public class Wave {
 		boolean nbtTagNotNull = false;
 		NBTTagCompound compound = new NBTTagCompound();
 		if(!(compoundString.equalsIgnoreCase("{}") || compoundString.equalsIgnoreCase(""))) {
-			compound = new NBTTagCompound().getCompound(compoundString);
-			compound.setString("id", itemNameSpacedKey);
-			compound.setInt("amount", stackAmount);
-			nbtTagNotNull = true;
+			try {
+				compound = MojangsonParser.parse(compoundString);
+				compound.setString("id", itemNameSpacedKey);
+				compound.setInt("amount", stackAmount);
+				nbtTagNotNull = true;
+			} catch (CommandSyntaxException e) {
+				e.printStackTrace();
+			}
 		}
 		
-		Material material = Material.RED_NETHER_BRICKS;
+		Material material = Material.AIR;
 		
 		for(Material m : Material.values()) {
 			if(m.getKey().toString().equalsIgnoreCase(itemNameSpacedKey)) {

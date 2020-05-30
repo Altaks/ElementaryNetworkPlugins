@@ -2,6 +2,7 @@ package fr.altaks.eodungeons.util;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Random;
 
 import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
@@ -10,8 +11,11 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.craftbukkit.v1_15_R1.inventory.CraftItemStack;
 import org.bukkit.inventory.ItemStack;
 
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
+
 import fr.altaks.eodungeons.Main;
 import fr.altaks.eodungeons.core.DungeonLoots;
+import net.minecraft.server.v1_15_R1.MojangsonParser;
 import net.minecraft.server.v1_15_R1.NBTTagCompound;
 
 /**
@@ -26,9 +30,9 @@ public class LootsUtil {
 	 * @param looseLoots -> Fichier qui contient la liste des items qui vont être donnés en cas d'échec
 	 * @return DungeonLoots
 	 */
-	public static DungeonLoots getDungeonLoots(Main main, File winLoots, File looseLoots) {
-		ArrayList<ItemStack> win_items = getItems(winLoots);
-		ArrayList<ItemStack> fail_items = getItems(looseLoots);
+	public static DungeonLoots getDungeonLoots(Main main, File winLoots, File looseLoots, int groupSize) {
+		ArrayList<ItemStack> win_items = getItems(winLoots, groupSize);
+		ArrayList<ItemStack> fail_items = getItems(looseLoots, groupSize);
 		return new DungeonLoots(main, win_items, fail_items);
 	}
 	
@@ -37,13 +41,30 @@ public class LootsUtil {
 	 * @param file -> Fichier qui renferme tous les items
 	 * @return List<ItemStack> qui contient tous les items inscrits dans le fichier
 	 */
-	private static ArrayList<ItemStack> getItems(File file){
+	private static ArrayList<ItemStack> getItems(File file, int groupSize){
 		ArrayList<ItemStack> items = new ArrayList<ItemStack>();
 		FileConfiguration yml = YamlConfiguration.loadConfiguration(file);
 		for(String item : yml.getKeys(false)) {
-			items.add(getItem(yml.getConfigurationSection(item)));
+			ItemStack i = getItem(yml.getConfigurationSection(item));
+			if(yml.isSet(item + ".loot-luck")) {
+				
+				if(yml.get(item + ".loot-luck") instanceof String){
+					double percentage = getPersentageFromString(yml.getString(item + ".loot-luck"), groupSize);
+					if(new Random().nextDouble() * 100 < percentage) {
+						items.add(i);
+					}
+				} else if(yml.get(item + ".loot-luck") instanceof Double || yml.get(item + ".loot-luck") instanceof Integer) {
+					if(new Random().nextDouble() * 100 < yml.getConfigurationSection(item).getDouble("loot-luck")) {
+						items.add(i);
+					}
+				}
+			} else items.add(i);
 		}
 		return items;
+	}
+
+	private static double getPersentageFromString(String str, int groupSize) {
+		return Double.parseDouble(str.replace("[", "").replace("]", "").split("/")[groupSize - 1]);
 	}
 	
 	/**
@@ -59,13 +80,17 @@ public class LootsUtil {
 		boolean nbtTagNotNull = false;
 		NBTTagCompound compound = new NBTTagCompound();
 		if(!(compoundString.equalsIgnoreCase("{}") || compoundString.equalsIgnoreCase(""))) {
-			compound = new NBTTagCompound().getCompound(compoundString);
-			compound.setString("id", itemNameSpacedKey);
-			compound.setInt("amount", stackAmount);
-			nbtTagNotNull = true;
+			try {
+				compound = MojangsonParser.parse(compoundString);
+				compound.setString("id", itemNameSpacedKey);
+				compound.setInt("amount", stackAmount);
+				nbtTagNotNull = true;
+			} catch (CommandSyntaxException e) {
+				e.printStackTrace();
+			}
 		}
 		
-		Material material = Material.RED_NETHER_BRICKS;
+		Material material = Material.AIR;
 		
 		for(Material m : Material.values()) {
 			if(m.getKey().toString().equalsIgnoreCase(itemNameSpacedKey)) {

@@ -3,6 +3,7 @@ item-1:
   amount: 1
   nbt-tag: "{}"
 item-2:
+  loot-luck: 10 # pourcents
   item-name: "minecraft:iron_pickaxe"
   amount: 1
   nbt-tag: "{}"

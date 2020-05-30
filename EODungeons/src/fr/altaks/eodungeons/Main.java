@@ -8,9 +8,11 @@ import java.util.List;
 import java.util.UUID;
 
 import org.bukkit.Bukkit;
-import org.bukkit.entity.LivingEntity;
+import org.bukkit.boss.BossBar;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import fr.altaks.eodungeons.commands.GetItemTagCommand;
+import fr.altaks.eodungeons.commands.MissedLootsCommand;
 import fr.altaks.eodungeons.commands.StopDungeonCommand;
 import fr.altaks.eodungeons.core.Dongeon;
 import fr.altaks.eodungeons.listener.ConnectionListener;
@@ -27,14 +29,15 @@ public class Main extends JavaPlugin { // Il s'agit d'une classe Main qui hérite
 	private final List<UUID> activeEntityIDs = new ArrayList<>(); // Listes des entités de donjons (pour les actualisations de barres de vie)
 	
 	private final HashMap<UUID, Dongeon> linkedDongeon = new HashMap<>(); // Liaisons Joueur -> Donjon
-	
-	private final HashMap<UUID, Dongeon> spawnedBossesIDs = new HashMap<>(); // Liaisons Entité (étant un boss ou miniboss) -> Donjon
+
+	private final HashMap<UUID, BossBar> bossbars = new HashMap<>();
 	private final HashMap<String, Dongeon> activeDungeons = new HashMap<>(); // Liaisons Nom de donjon -> Donjon
 	
 	public static final String PLUGIN_PREFIX = "§7[§eEODungeons§7] §6\u00BB "; // Préfixe de tchat du plugin
 	
 	// Dossiers des listes de mobs, listes de loots, et fichier de sauvegarde des endroits de déconnection
 	private File waveDirectory, lootsDirectory, disconnectionLocsFile;
+	private static File postDecoLootDirectory;
 	
 	public static boolean isDebugging = false;
 	
@@ -51,6 +54,9 @@ public class Main extends JavaPlugin { // Il s'agit d'une classe Main qui hérite
 		// Vérifie si le dossier des listes de loots existe. Si non -> création
 		lootsDirectory = new File(getDataFolder() + File.separator + "loots/");
 		if(!lootsDirectory.exists()) lootsDirectory.mkdir();
+		
+		postDecoLootDirectory = new File(getDataFolder() + File.separator + "post_deco_loots/");
+		if(!postDecoLootDirectory.exists()) postDecoLootDirectory.mkdir();
 		
 		// Vérifie si le fichier des endroits de déconnection existe. Si non -> création avec risque de IOExeption
 		disconnectionLocsFile = new File(getDataFolder() + File.separator + "disconnection_locations.yml");
@@ -72,6 +78,7 @@ public class Main extends JavaPlugin { // Il s'agit d'une classe Main qui hérite
 		getServer().getPluginManager().registerEvents(new InteractListener(this), this);
 		getServer().getPluginManager().registerEvents(new PlayerAttackMobListener(this), this);
 		getServer().getPluginManager().registerEvents(new ConnectionListener(this), this);
+		getServer().getPluginManager().registerEvents(new MissedLootsCommand(), this);
 		
 		/*
 		 * Activation de la commande stopcommand
@@ -79,6 +86,9 @@ public class Main extends JavaPlugin { // Il s'agit d'une classe Main qui hérite
 		getCommand("stopdungeon").setExecutor(new StopDungeonCommand(this));
 		getCommand("stopdungeon").setTabCompleter(new StopDungeonCommand(this));
 		
+		getCommand("getitemtag").setExecutor(new GetItemTagCommand());
+		
+		getCommand("missedloots").setExecutor(new MissedLootsCommand());
 	}
 	
 	/*
@@ -102,6 +112,10 @@ public class Main extends JavaPlugin { // Il s'agit d'une classe Main qui hérite
 		return this.lootsDirectory;
 	}
 	
+	public static File getPostDecoLootsDirectory() {
+		return postDecoLootDirectory;
+	}
+	
 	@Override
 	public void onDisable() {
 		Bukkit.getOnlinePlayers().forEach(player -> { // pour chaque joueur
@@ -118,17 +132,17 @@ public class Main extends JavaPlugin { // Il s'agit d'une classe Main qui hérite
 		});
 		
 		this.activeEntityIDs.forEach(entityUUID -> { // pour chaque entité de donjon vivante
-			((LivingEntity) Bukkit.getEntity(entityUUID)).setHealth(0.0d); // mettre la vie de cette entité à 0.0d
+			Bukkit.getEntity(entityUUID).remove(); // mettre la vie de cette entité à 0.0d
 			this.activeEntityIDs.remove(entityUUID); // Retirer cette entité de la liste en cas de bug
 		});
-		
-		this.spawnedBossesIDs.keySet().forEach(bossUUID -> { // pour chaque boss spawné
-			((LivingEntity) Bukkit.getEntity(bossUUID)).setHealth(0.0d); // mettre la vie de ce boss ) 0.0d
-			this.spawnedBossesIDs.remove(bossUUID); // retirer ce boss de la liste en cas de bug
-		});
+		;
 		
 		this.activeDongeons.forEach(dongeon -> { // pour chaque donjon lancé
 			dongeon.stop_loosing(true); // stopper le donjon en mode échec des joueurs
+		});
+		
+		this.bossbars.values().forEach(bossbar -> {
+			bossbar.removeAll();
 		});
 	}
 	
@@ -142,14 +156,13 @@ public class Main extends JavaPlugin { // Il s'agit d'une classe Main qui hérite
 		return this.linkedDongeon;
 	}
 	
+	public HashMap<UUID, BossBar> getActiveBossBars(){
+		return this.bossbars;
+	}
+	
 	// Permet de récupérer la liste des mobs spawnés par les donjons
 	public List<UUID> getActiveEntityIDs(){
 		return this.activeEntityIDs;
-	}
-	
-	// Permet d'obtenir la HashMap des UUIDs de boss -> donjons associés
-	public HashMap<UUID, Dongeon> getSpawnedBossesIDs(){
-		return this.spawnedBossesIDs;
 	}
 	
 	// Permet d'obtenir la HashMap des String (noms) des donjons -> donjons associés

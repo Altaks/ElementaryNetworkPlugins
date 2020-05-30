@@ -1,5 +1,5 @@
 name: EODungeons
-version: 1.5.9
+version: 1.6.9
 author: Altaks
 main: fr.altaks.eodungeons.Main
 api-version: 1.15
@@ -8,3 +8,10 @@ commands:
     description: "Allow admins or \"dungeon.stop.use\" permissed players to stop active dungeons with command orders"
     permission: dongeon.stop.use
     usage: "/stopdungeon <active-dungeon-name>"
+  getitemtag:
+    description: "Allow to get into your clipboard the NBT of the item you've in your main hand"
+    permisson: itemtag.get.use
+    usage: "/getitemtag"
+  missedloots: 
+    description: "Allow you to get items that you missed"
+    usage: "/missedloots"

@@ -1,12 +1,15 @@
 item-1: 
   item-name: "minecraft:diamond_sword"
+  loot-luck: 25 # % de chance d'être looté
   amount: 1
-  nbt-tag: "{}"
+  nbt-tag: "{RepairCost:1,display:{Lore:['{\"italic\":false,\"color\":\"gray\",\"text\":\"Xp Boost III\"}','{\"italic\":false,\"color\":\"gray\",\"text\":\"Poison Aspect III\"}','{\"italic\":false,\"color\":\"gray\",\"text\":\"Attack Speed III\"}'],Name:'{\"text\":\"Etripeur\"}'},Enchantments:[{lvl:5s,id:\"minecraft:sharpness\"},{lvl:2s,id:\"minecraft:fire_aspect\"},{lvl:3s,id:\"minecraft:unbreaking\"},{lvl:1s,id:\"minecraft:mending\"},{lvl:3s,id:\"minecraft:looting\"},{lvl:2s,id:\"minecraft:knockback\"},{lvl:3s,id:\"minecraft:sweeping\"}],Damage:0,AttributeModifiers:[{UUIDMost:38229L,UUIDLeast:114076L,Amount:7.0d,Slot:\"mainhand\",AttributeName:\"generic.attackDamage\",Operation:0,Name:\"generic.attackDamage\"},{UUIDMost:59048L,UUIDLeast:159745L,Amount:2.5d,Slot:\"mainhand\",AttributeName:\"generic.attackSpeed\",Operation:0,Name:\"generic.attackSpeed\"}],CustomEnchantments:{AntiLagPoison:1,XpBoost:3,AntiLagXpBoost:1,AttackSpeed:3,PoisonAspect:3}}"
 item-2:
   item-name: "minecraft:diamond_pickaxe"
   amount: 1
   nbt-tag: "{}"
 item-3: 
   item-name: "minecraft:diamond_axe"
+  loot-luck: 50
   amount: 1
   nbt-tag: "{}"
+ 
